@@ -5,11 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Голосовой повторитель</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
             text-align: center;
@@ -23,28 +19,12 @@
             align-items: center;
             transition: background 0.3s;
         }
-        body.active {
-            background: #1a0a2e;
-        }
-        body.recording {
-            background: #2e0a0a;
-        }
+        body.active { background: #1a0a2e; }
+        body.recording { background: #2e0a0a; }
 
-        .container {
-            max-width: 420px;
-            width: 100%;
-            padding: 20px;
-        }
-
-        h1 {
-            font-size: 24px;
-            margin-bottom: 5px;
-        }
-        .subtitle {
-            color: #888;
-            font-size: 13px;
-            margin-bottom: 20px;
-        }
+        .container { max-width: 420px; width: 100%; padding: 20px; }
+        h1 { font-size: 24px; margin-bottom: 5px; }
+        .subtitle { color: #888; font-size: 13px; margin-bottom: 20px; }
 
         .status-circle {
             width: 80px;
@@ -59,38 +39,16 @@
             justify-content: center;
             font-size: 32px;
         }
-        body.active .status-circle {
-            border-color: #667eea;
-            box-shadow: 0 0 40px rgba(102, 126, 234, 0.3);
-        }
-        body.recording .status-circle {
-            border-color: #e74c3c;
-            box-shadow: 0 0 40px rgba(231, 76, 60, 0.4);
-            animation: pulse 0.5s infinite;
-        }
+        body.active .status-circle { border-color: #667eea; box-shadow: 0 0 40px rgba(102,126,234,0.3); }
+        body.recording .status-circle { border-color: #e74c3c; box-shadow: 0 0 40px rgba(231,76,60,0.4); animation: pulse 0.5s infinite; }
         @keyframes pulse {
-            0% {
-                transform: scale(1);
-            }
-            50% {
-                transform: scale(1.05);
-            }
-            100% {
-                transform: scale(1);
-            }
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
         }
 
-        #status {
-            font-size: 18px;
-            color: #ccc;
-            min-height: 30px;
-            margin-top: 10px;
-        }
-        #volume {
-            font-size: 14px;
-            color: #667eea;
-            margin-top: 5px;
-        }
+        #status { font-size: 18px; color: #ccc; min-height: 30px; margin-top: 10px; }
+        #volume { font-size: 14px; color: #667eea; margin-top: 5px; }
 
         .meter {
             width: 100%;
@@ -121,14 +79,9 @@
             display: flex;
             justify-content: space-between;
         }
-        .settings-title .value {
-            color: #667eea;
-            font-weight: bold;
-        }
+        .settings-title .value { color: #667eea; font-weight: bold; }
 
-        .slider-group {
-            margin: 10px 0;
-        }
+        .slider-group { margin: 10px 0; }
         .slider-group label {
             display: flex;
             justify-content: space-between;
@@ -136,10 +89,7 @@
             color: #aaa;
             margin-bottom: 5px;
         }
-        .slider-group label .val {
-            color: #667eea;
-            font-weight: bold;
-        }
+        .slider-group label .val { color: #667eea; font-weight: bold; }
 
         input[type="range"] {
             -webkit-appearance: none;
@@ -158,7 +108,7 @@
             border-radius: 50%;
             background: linear-gradient(135deg, #667eea, #764ba2);
             cursor: pointer;
-            box-shadow: 0 0 20px rgba(102, 126, 234, 0.3);
+            box-shadow: 0 0 20px rgba(102,126,234,0.3);
         }
         input[type="range"]::-moz-range-thumb {
             width: 18px;
@@ -177,15 +127,9 @@
             margin-top: 2px;
             padding: 0 2px;
         }
-        .slider-scale .low {
-            color: #2ecc71;
-        }
-        .slider-scale .mid {
-            color: #f1c40f;
-        }
-        .slider-scale .high {
-            color: #e74c3c;
-        }
+        .slider-scale .low { color: #2ecc71; }
+        .slider-scale .mid { color: #f1c40f; }
+        .slider-scale .high { color: #e74c3c; }
 
         .presets {
             display: flex;
@@ -204,12 +148,10 @@
             cursor: pointer;
             transition: 0.3s;
         }
-        .preset-btn:active {
-            transform: scale(0.95);
-        }
+        .preset-btn:active { transform: scale(0.95); }
         .preset-btn.active {
             border-color: #667eea;
-            background: rgba(102, 126, 234, 0.2);
+            background: rgba(102,126,234,0.2);
             color: #667eea;
         }
 
@@ -221,22 +163,10 @@
             margin-top: 10px;
             transition: 0.3s;
         }
-        .badge.idle {
-            background: #222;
-            color: #888;
-        }
-        .badge.listening {
-            background: #1a2a4a;
-            color: #667eea;
-        }
-        .badge.recording {
-            background: #4a1a1a;
-            color: #e74c3c;
-        }
-        .badge.playing {
-            background: #1a4a2a;
-            color: #2ecc71;
-        }
+        .badge.idle { background: #222; color: #888; }
+        .badge.listening { background: #1a2a4a; color: #667eea; }
+        .badge.recording { background: #4a1a1a; color: #e74c3c; }
+        .badge.playing { background: #1a4a2a; color: #2ecc71; }
 
         .log {
             margin-top: 12px;
@@ -252,13 +182,8 @@
             border: 1px solid #1a1a3e;
             line-height: 1.6;
         }
-        .log-entry {
-            padding: 1px 0;
-            border-bottom: 1px solid #111;
-        }
-        .log-entry .time {
-            color: #555;
-        }
+        .log-entry { padding: 1px 0; border-bottom: 1px solid #111; }
+        .log-entry .time { color: #555; }
 
         .info {
             margin-top: 15px;
@@ -282,17 +207,9 @@
             flex-wrap: wrap;
             justify-content: center;
         }
-        .threshold-indicator .label {
-            color: #666;
-        }
-        .threshold-indicator .current {
-            color: #2ecc71;
-            font-weight: bold;
-        }
-        .threshold-indicator .threshold {
-            color: #e74c3c;
-            font-weight: bold;
-        }
+        .threshold-indicator .label { color: #666; }
+        .threshold-indicator .current { color: #2ecc71; font-weight: bold; }
+        .threshold-indicator .threshold { color: #e74c3c; font-weight: bold; }
 
         .btn-main {
             margin-top: 15px;
@@ -308,12 +225,8 @@
             max-width: 300px;
             transition: transform 0.2s;
         }
-        .btn-main:active {
-            transform: scale(0.95);
-        }
-        .btn-main.running {
-            background: linear-gradient(135deg, #e74c3c, #c0392b);
-        }
+        .btn-main:active { transform: scale(0.95); }
+        .btn-main.running { background: linear-gradient(135deg, #e74c3c, #c0392b); }
     </style>
 </head>
 <body id="body">
@@ -322,7 +235,6 @@
         <div class="subtitle">Говорите — услышите себя с задержкой</div>
 
         <div class="status-circle" id="circle">🎙️</div>
-
         <div id="status">Нажмите "Старт"</div>
         <div id="volume">Громкость: 0</div>
         <div class="meter">
@@ -337,7 +249,6 @@
         </div>
 
         <span class="badge idle" id="badge">● Ожидание</span>
-
         <button class="btn-main" id="startBtn">▶ Старт</button>
 
         <div class="settings">
@@ -508,7 +419,7 @@
             addLog('🚀 Запуск...');
             updateUI('idle', '🎵 Инициализация...');
 
-            // Создаем аудиоконтекст
+            // Создаём аудиоконтекст по жесту пользователя
             try {
                 audioContext = new(window.AudioContext || window.webkitAudioContext)();
 
@@ -518,7 +429,7 @@
                         startMicrophone();
                     }).catch(err => {
                         addLog('⚠️ ' + err.message);
-                        // Ждем касания для iOS
+                        // Ждём касания для iOS
                         document.addEventListener('touchstart', function onTouch() {
                             document.removeEventListener('touchstart', onTouch);
                             if (audioContext && audioContext.state === 'suspended') {
@@ -584,9 +495,7 @@
             try {
                 if (!audioContext || audioContext.state === 'closed') {
                     audioContext = new(window.AudioContext || window.webkitAudioContext)();
-                }
-                if (audioContext.state === 'suspended') {
-                    audioContext.resume();
+                    if (audioContext.state === 'suspended') audioContext.resume();
                 }
 
                 analyser = audioContext.createAnalyser();
@@ -682,7 +591,7 @@
             }
         }
 
-        // ===================== ВОСПРОИЗВЕДЕНИЕ (САМОЕ НАДЕЖНОЕ) =====================
+        // ===================== ВОСПРОИЗВЕДЕНИЕ (Web Audio API) =====================
         function playRecording() {
             if (isProcessing || isPlaying) return;
 
@@ -705,105 +614,119 @@
                     return;
                 }
 
-                // ПРОСТОЙ СПОСОБ: создаем новый Audio элемент
-                // и пробуем разные форматы
-                let blob = null;
-                let url = null;
-
-                try {
-                    // Пробуем сначала webm
-                    blob = new Blob(chunksCopy, { type: 'audio/webm' });
-                    url = URL.createObjectURL(blob);
-
-                    const audio = new Audio();
-                    audio.src = url;
-                    audio.volume = 1.0;
-
-                    audio.onplay = () => {
-                        updateUI('playing', '🔊 Воспроизведение...');
-                        addLog('🔊 Воспроизведение');
-                    };
-
-                    audio.onended = () => {
-                        URL.revokeObjectURL(url);
-                        isPlaying = false;
+                // Убедимся, что контекст активен
+                if (!audioContext || audioContext.state === 'closed') {
+                    audioContext = new(window.AudioContext || window.webkitAudioContext)();
+                }
+                if (audioContext.state === 'suspended') {
+                    audioContext.resume().then(() => {
+                        doPlay(chunksCopy);
+                    }).catch(err => {
+                        addLog('❌ Ошибка возобновления контекста: ' + err.message);
                         isProcessing = false;
-                        addLog('✅ Готово');
-                        if (isRunning) {
-                            updateUI('listening', '🎤 Слушаю...');
-                            addLog('🎤 Снова слушаю');
-                        }
-                    };
+                        isPlaying = false;
+                        if (isRunning) updateUI('listening', '🎤 Слушаю...');
+                    });
+                } else {
+                    doPlay(chunksCopy);
+                }
 
-                    audio.onerror = () => {
-                        // Если webm не работает, пробуем mp4
-                        addLog('🔄 Пробуем формат mp4...');
+            }, DELAY_SECONDS * 1000);
+        }
+
+        function doPlay(chunks) {
+            try {
+                // Пробуем webm
+                let mimeType = 'audio/webm';
+                // Проверим, есть ли тип у первого чанка
+                if (chunks[0] && chunks[0].type) {
+                    mimeType = chunks[0].type;
+                }
+
+                const blob = new Blob(chunks, { type: mimeType });
+                const url = URL.createObjectURL(blob);
+
+                fetch(url)
+                    .then(response => response.arrayBuffer())
+                    .then(arrayBuffer => {
                         URL.revokeObjectURL(url);
+                        return audioContext.decodeAudioData(arrayBuffer);
+                    })
+                    .then(audioBuffer => {
+                        const source = audioContext.createBufferSource();
+                        source.buffer = audioBuffer;
+                        source.connect(audioContext.destination);
 
-                        try {
-                            const blob2 = new Blob(chunksCopy, { type: 'audio/mp4' });
-                            const url2 = URL.createObjectURL(blob2);
-                            const audio2 = new Audio();
-                            audio2.src = url2;
-                            audio2.volume = 1.0;
+                        updateUI('playing', '🔊 Воспроизведение...');
+                        addLog('🔊 Воспроизведение через Web Audio');
 
-                            audio2.onended = () => {
-                                URL.revokeObjectURL(url2);
-                                isPlaying = false;
-                                isProcessing = false;
-                                addLog('✅ Готово (mp4)');
-                                if (isRunning) {
-                                    updateUI('listening', '🎤 Слушаю...');
-                                }
-                            };
-
-                            audio2.onerror = () => {
-                                URL.revokeObjectURL(url2);
-                                addLog('❌ Ошибка mp4');
-                                isPlaying = false;
-                                isProcessing = false;
-                                if (isRunning) {
-                                    updateUI('listening', '🎤 Слушаю...');
-                                }
-                            };
-
-                            audio2.play().catch(err => {
-                                addLog('❌ ' + err.message);
-                                isPlaying = false;
-                                isProcessing = false;
-                                if (isRunning) {
-                                    updateUI('listening', '🎤 Слушаю...');
-                                }
-                            });
-                        } catch (err2) {
-                            addLog('❌ ' + err2.message);
+                        source.onended = () => {
+                            addLog('✅ Воспроизведение завершено');
                             isPlaying = false;
                             isProcessing = false;
                             if (isRunning) {
                                 updateUI('listening', '🎤 Слушаю...');
+                                addLog('🎤 Снова слушаю');
                             }
-                        }
-                    };
+                        };
 
-                    audio.play().catch(err => {
-                        addLog('❌ ' + err.message);
-                        isPlaying = false;
-                        isProcessing = false;
-                        if (isRunning) {
-                            updateUI('listening', '🎤 Слушаю...');
+                        source.start(0);
+
+                        // Таймаут на случай, если onended не сработает
+                        setTimeout(() => {
+                            if (isPlaying) {
+                                try { source.stop(); } catch (e) {}
+                                isPlaying = false;
+                                isProcessing = false;
+                                if (isRunning) {
+                                    updateUI('listening', '🎤 Слушаю...');
+                                }
+                            }
+                        }, (audioBuffer.duration * 1000) + 1000);
+                    })
+                    .catch(err => {
+                        addLog('❌ Ошибка декодирования: ' + err.message);
+                        // Пробуем через Audio элемент как fallback
+                        addLog('🔄 Пробуем Audio элемент...');
+                        try {
+                            const blob2 = new Blob(chunks, { type: 'audio/mp4' });
+                            const url2 = URL.createObjectURL(blob2);
+                            const audio = new Audio();
+                            audio.src = url2;
+                            audio.volume = 1.0;
+                            audio.onended = () => {
+                                URL.revokeObjectURL(url2);
+                                isPlaying = false;
+                                isProcessing = false;
+                                if (isRunning) updateUI('listening', '🎤 Слушаю...');
+                            };
+                            audio.onerror = () => {
+                                URL.revokeObjectURL(url2);
+                                addLog('❌ Ошибка Audio элемента');
+                                isPlaying = false;
+                                isProcessing = false;
+                                if (isRunning) updateUI('listening', '🎤 Слушаю...');
+                            };
+                            audio.play().catch(e => {
+                                addLog('❌ ' + e.message);
+                                isPlaying = false;
+                                isProcessing = false;
+                                if (isRunning) updateUI('listening', '🎤 Слушаю...');
+                            });
+                        } catch (e2) {
+                            addLog('❌ ' + e2.message);
+                            isPlaying = false;
+                            isProcessing = false;
+                            if (isRunning) updateUI('listening', '🎤 Слушаю...');
                         }
                     });
 
-                } catch (err) {
-                    addLog('❌ ' + err.message);
-                    isPlaying = false;
-                    isProcessing = false;
-                    if (isRunning) {
-                        updateUI('listening', '🎤 Слушаю...');
-                    }
-                }
-
-            }, DELAY_SECONDS * 1000);
+            } catch (err) {
+                addLog('❌ ' + err.message);
+                isPlaying = false;
+                isProcessing = false;
+                if (isRunning) updateUI('listening', '🎤 Слушаю...');
+            }
         }
 
         // ===================== ОСТАНОВКА =====================
@@ -878,7 +801,6 @@
         // ===================== АВТОЗАПУСК =====================
         window.addEventListener('load', () => {
             addLog('🚀 Загружено');
-            // Автозапуск через 1 секунду
             setTimeout(startApp, 1000);
         });
 
