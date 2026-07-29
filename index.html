@@ -323,6 +323,23 @@
         .ios-notice.show {
             display: block;
         }
+
+        /* Кнопка экстренной остановки */
+        #stopBtn {
+            margin-top: 10px;
+            padding: 8px 20px;
+            background: rgba(231, 76, 60, 0.2);
+            border: 1px solid rgba(231, 76, 60, 0.3);
+            border-radius: 20px;
+            color: #e74c3c;
+            font-size: 12px;
+            cursor: pointer;
+            touch-action: manipulation;
+            display: none;
+        }
+        #stopBtn.show {
+            display: inline-block;
+        }
     </style>
 </head>
 <body id="body">
@@ -374,9 +391,9 @@
                     <span class="val" id="delayValue">3</span>
                 </label>
                 <input type="range" id="delaySlider" 
-                       min="1" max="10" value="3" step="0.5">
+                       min="0.5" max="10" value="3" step="0.5">
                 <div class="slider-scale">
-                    <span>1с</span>
+                    <span>0.5с</span>
                     <span>5с</span>
                     <span>10с</span>
                 </div>
@@ -398,6 +415,9 @@
             📱 На iOS для работы звука необходимо нажать кнопку выше
         </div>
         
+        <!-- Кнопка остановки -->
+        <button id="stopBtn">⏹ Остановить всё</button>
+        
         <div class="log" id="log">
             <div class="log-entry"><span class="time">▶</span> Приложение запущено</div>
         </div>
@@ -417,7 +437,7 @@
         let VOICE_THRESHOLD = 25;
         let DELAY_SECONDS = 3;
         const SILENCE_TIMEOUT = 1.5;
-        const MIN_RECORDING_SECONDS = 0.5;
+        const MIN_RECORDING_SECONDS = 0.3;
         
         let isRunning = false;
         let mediaRecorder = null;
@@ -433,7 +453,8 @@
         let recordingStartTime = 0;
         let currentVolume = 0;
         let isAudioReady = false;
-        let audioElement = null;
+        let currentAudioElement = null;
+        let currentBlobUrl = null;
 
         // DOM
         const body = document.getElementById('body');
@@ -453,6 +474,7 @@
         const presetBtns = document.querySelectorAll('.preset-btn');
         const iosStartBtn = document.getElementById('iosStartBtn');
         const iosNotice = document.getElementById('iosNotice');
+        const stopBtn = document.getElementById('stopBtn');
 
         // ===================== iOS UI =====================
         if (isIOSDevice) {
@@ -495,7 +517,7 @@
             const time = new Date().toLocaleTimeString();
             entry.innerHTML = `<span class="time">${time}</span> ${msg}`;
             logDiv.prepend(entry);
-            if (logDiv.children.length > 20) {
+            if (logDiv.children.length > 30) {
                 logDiv.removeChild(logDiv.lastChild);
             }
         }
@@ -508,26 +530,94 @@
                     circle.textContent = '🎤';
                     badge.className = 'badge listening';
                     badge.textContent = '● Слушаю';
+                    stopBtn.classList.add('show');
                     break;
                 case 'recording':
                     body.classList.add('recording');
                     circle.textContent = '🔴';
                     badge.className = 'badge recording';
                     badge.textContent = '● Запись';
+                    stopBtn.classList.add('show');
                     break;
                 case 'playing':
                     body.classList.add('active');
                     circle.textContent = '🔊';
                     badge.className = 'badge playing';
                     badge.textContent = '● Воспроизведение';
+                    stopBtn.classList.add('show');
                     break;
                 default:
                     circle.textContent = '🎙️';
                     badge.className = 'badge idle';
                     badge.textContent = '● Ожидание';
+                    stopBtn.classList.remove('show');
                     break;
             }
             statusDiv.textContent = statusText;
+        }
+
+        // ===================== ОСТАНОВКА ВСЕГО =====================
+        function stopEverything() {
+            addLog('⏹ Принудительная остановка');
+            
+            // Останавливаем аудио
+            if (currentAudioElement) {
+                try {
+                    currentAudioElement.pause();
+                    currentAudioElement.currentTime = 0;
+                    currentAudioElement.src = '';
+                } catch(e) {}
+                currentAudioElement = null;
+            }
+            
+            // Удаляем URL
+            if (currentBlobUrl) {
+                URL.revokeObjectURL(currentBlobUrl);
+                currentBlobUrl = null;
+            }
+            
+            // Останавливаем запись
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                try { mediaRecorder.stop(); } catch(e) {}
+            }
+            
+            // Останавливаем анализ
+            if (animationFrame) {
+                cancelAnimationFrame(animationFrame);
+                animationFrame = null;
+            }
+            
+            // Закрываем аудиоконтекст
+            if (audioContext && audioContext.state !== 'closed') {
+                try { audioContext.close(); } catch(e) {}
+                audioContext = null;
+            }
+            
+            // Останавливаем поток
+            if (stream) {
+                stream.getTracks().forEach(t => t.stop());
+                stream = null;
+            }
+            
+            isRunning = false;
+            isRecording = false;
+            isPlaying = false;
+            audioChunks = [];
+            
+            updateUI('idle', '⏹ Остановлено');
+            volumeDiv.textContent = 'Громкость: 0';
+            meterFill.style.width = '0%';
+            currentLevel.textContent = '0';
+            addLog('⏹ Полная остановка');
+            
+            // Показываем кнопку активации для iOS
+            if (isIOSDevice) {
+                iosStartBtn.classList.remove('hidden');
+                iosNotice.classList.add('show');
+                iosStartBtn.textContent = '🎵 Нажмите для запуска звука';
+                iosStartBtn.style.background = 'linear-gradient(135deg, #667eea, #764ba2)';
+                isAudioReady = false;
+            }
         }
 
         // ===================== АУДИО ДЛЯ iOS =====================
@@ -535,16 +625,12 @@
             if (isAudioReady) return;
             
             try {
-                // Создаем тихий звук для активации аудиоконтекста
+                // Создаем аудиоконтекст
                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 
                 if (audioContext.state === 'suspended') {
                     audioContext.resume();
                 }
-                
-                // Создаем пустой аудио-элемент для воспроизведения
-                audioElement = new Audio();
-                audioElement.volume = 1.0;
                 
                 isAudioReady = true;
                 addLog('✅ Аудио активировано для iOS');
@@ -595,6 +681,8 @@
                 addLog('❌ Ошибка: ' + err.message);
                 if (isIOSDevice) {
                     updateUI('idle', '⚠️ Ошибка: ' + err.message.slice(0, 30));
+                    iosStartBtn.classList.remove('hidden');
+                    iosNotice.classList.add('show');
                 }
                 setTimeout(autoStart, 5000);
             });
@@ -624,13 +712,11 @@
                 // На iOS используем другой mimeType для MediaRecorder
                 let options = {};
                 if (isIOSDevice) {
-                    // iOS поддерживает только определенные форматы
-                    options = { mimeType: 'audio/mp4' };
-                    // Проверяем поддержку
-                    if (!MediaRecorder.isTypeSupported('audio/mp4')) {
+                    if (MediaRecorder.isTypeSupported('audio/mp4')) {
+                        options = { mimeType: 'audio/mp4' };
+                    } else if (MediaRecorder.isTypeSupported('audio/aac')) {
                         options = { mimeType: 'audio/aac' };
-                    }
-                    if (!MediaRecorder.isTypeSupported('audio/aac')) {
+                    } else if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
                         options = { mimeType: 'audio/webm;codecs=opus' };
                     }
                 }
@@ -720,19 +806,38 @@
                 
             } catch (err) {
                 addLog('⚠️ Ошибка: ' + err.message);
-                stopAll();
+                stopEverything();
                 setTimeout(autoStart, 3000);
             }
         }
 
         // ===================== ВОСПРОИЗВЕДЕНИЕ =====================
         function playWithDelay() {
+            // Если уже играет, останавливаем
+            if (isPlaying) {
+                addLog('⏹ Останавливаем предыдущее воспроизведение');
+                if (currentAudioElement) {
+                    try {
+                        currentAudioElement.pause();
+                        currentAudioElement.currentTime = 0;
+                    } catch(e) {}
+                }
+                if (currentBlobUrl) {
+                    URL.revokeObjectURL(currentBlobUrl);
+                    currentBlobUrl = null;
+                }
+                isPlaying = false;
+            }
+            
             isPlaying = true;
             updateUI('playing', `⏳ Через ${DELAY_SECONDS}с...`);
             addLog(`⏳ Задержка ${DELAY_SECONDS}с`);
             
+            // Сохраняем копию данных для воспроизведения
+            const chunksCopy = audioChunks.slice();
+            
             setTimeout(() => {
-                if (audioChunks.length === 0) {
+                if (chunksCopy.length === 0) {
                     isPlaying = false;
                     updateUI('listening', '🔇 Ожидание голоса...');
                     return;
@@ -741,111 +846,120 @@
                 try {
                     // Определяем тип MIME для iOS
                     let mimeType = 'audio/webm';
-                    if (isIOSDevice) {
-                        // Пробуем разные форматы для iOS
-                        if (audioChunks[0] && audioChunks[0].type) {
-                            mimeType = audioChunks[0].type;
-                        } else {
-                            mimeType = 'audio/mp4';
-                        }
+                    if (isIOSDevice && chunksCopy[0] && chunksCopy[0].type) {
+                        mimeType = chunksCopy[0].type;
                     }
                     
-                    const blob = new Blob(audioChunks, { type: mimeType });
-                    const url = URL.createObjectURL(blob);
+                    // Создаем Blob
+                    const blob = new Blob(chunksCopy, { type: mimeType });
                     
-                    // Для iOS используем аудио-элемент
-                    let audio;
-                    if (isIOSDevice && audioElement) {
-                        audio = audioElement;
-                        audio.src = url;
-                    } else {
-                        audio = new Audio();
-                        audio.src = url;
+                    // Очищаем старый URL
+                    if (currentBlobUrl) {
+                        URL.revokeObjectURL(currentBlobUrl);
+                        currentBlobUrl = null;
                     }
                     
-                    audio.onplay = () => {
+                    currentBlobUrl = URL.createObjectURL(blob);
+                    
+                    // Создаем новый аудио-элемент
+                    if (currentAudioElement) {
+                        try {
+                            currentAudioElement.pause();
+                            currentAudioElement.src = '';
+                        } catch(e) {}
+                        currentAudioElement = null;
+                    }
+                    
+                    currentAudioElement = new Audio();
+                    currentAudioElement.src = currentBlobUrl;
+                    currentAudioElement.volume = 1.0;
+                    
+                    // Обработчики событий
+                    currentAudioElement.onplay = () => {
                         updateUI('playing', '🔊 Воспроизведение...');
                         addLog('🔊 Воспроизведение');
                     };
                     
-                    audio.onended = () => {
-                        URL.revokeObjectURL(url);
-                        audioChunks = [];
+                    currentAudioElement.onended = () => {
+                        addLog('✅ Воспроизведение завершено');
                         isPlaying = false;
+                        if (currentBlobUrl) {
+                            URL.revokeObjectURL(currentBlobUrl);
+                            currentBlobUrl = null;
+                        }
+                        currentAudioElement = null;
+                        audioChunks = [];
                         if (isRunning) {
                             updateUI('listening', '🎤 Слушаю...');
-                            addLog('✅ Готово');
+                            addLog('✅ Готово к новой записи');
                         }
                     };
                     
-                    audio.onerror = (e) => {
+                    currentAudioElement.onerror = (e) => {
+                        const error = currentAudioElement.error;
+                        addLog('❌ Ошибка воспроизведения: ' + (error ? error.message : 'неизвестно'));
                         isPlaying = false;
+                        if (currentBlobUrl) {
+                            URL.revokeObjectURL(currentBlobUrl);
+                            currentBlobUrl = null;
+                        }
+                        currentAudioElement = null;
                         audioChunks = [];
                         updateUI('listening', '⚠️ Ошибка');
-                        addLog('❌ Ошибка воспроизведения: ' + (e.target.error ? e.target.error.message : 'неизвестно'));
-                        // Пробуем другой формат
+                        
+                        // На iOS пробуем другой формат
                         if (isIOSDevice) {
                             addLog('🔄 Пробуем другой формат...');
                             try {
-                                const blob2 = new Blob(audioChunks, { type: 'audio/mp4' });
+                                const blob2 = new Blob(chunksCopy, { type: 'audio/mp4' });
                                 const url2 = URL.createObjectURL(blob2);
-                                audio.src = url2;
-                                audio.play();
+                                const audio2 = new Audio();
+                                audio2.src = url2;
+                                audio2.volume = 1.0;
+                                audio2.onended = () => {
+                                    isPlaying = false;
+                                    URL.revokeObjectURL(url2);
+                                    updateUI('listening', '🎤 Слушаю...');
+                                };
+                                audio2.play();
                             } catch (err2) {
                                 addLog('❌ Ошибка второго формата');
+                                updateUI('listening', '🎤 Слушаю...');
                             }
                         }
                     };
                     
                     // Пробуем воспроизвести
-                    const playPromise = audio.play();
+                    const playPromise = currentAudioElement.play();
                     if (playPromise !== undefined) {
                         playPromise.catch(err => {
-                            isPlaying = false;
-                            audioChunks = [];
                             addLog('❌ ' + err.message);
+                            isPlaying = false;
+                            if (currentBlobUrl) {
+                                URL.revokeObjectURL(currentBlobUrl);
+                                currentBlobUrl = null;
+                            }
+                            currentAudioElement = null;
+                            audioChunks = [];
                             updateUI('listening', '⚠️ Ошибка');
                             
                             if (isIOSDevice) {
                                 addLog('👆 Нажмите кнопку для активации звука');
                                 iosStartBtn.classList.remove('hidden');
                                 iosNotice.classList.add('show');
+                                isAudioReady = false;
                             }
                         });
                     }
                     
                 } catch (err) {
+                    addLog('❌ ' + err.message);
                     isPlaying = false;
                     audioChunks = [];
-                    addLog('❌ ' + err.message);
                     updateUI('listening', '⚠️ Ошибка');
                 }
                 
             }, DELAY_SECONDS * 1000);
-        }
-
-        // ===================== ОСТАНОВКА =====================
-        function stopAll() {
-            isRunning = false;
-            isRecording = false;
-            isPlaying = false;
-            
-            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-                try { mediaRecorder.stop(); } catch(e) {}
-            }
-            if (animationFrame) cancelAnimationFrame(animationFrame);
-            if (audioContext) try { audioContext.close(); audioContext = null; } catch(e) {}
-            if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
-            
-            mediaRecorder = null;
-            analyser = null;
-            
-            updateUI('idle', '🔇 Остановлено');
-            volumeDiv.textContent = 'Громкость: 0';
-            meterFill.style.width = '0%';
-            currentLevel.textContent = '0';
-            audioChunks = [];
-            addLog('⏹ Остановлено');
         }
 
         // ===================== СОБЫТИЯ =====================
@@ -854,6 +968,11 @@
         iosStartBtn.addEventListener('click', function() {
             this.textContent = '⏳ Активация...';
             initAudioOnIOS();
+        });
+        
+        // Кнопка остановки
+        stopBtn.addEventListener('click', function() {
+            stopEverything();
         });
         
         // Ползунки
