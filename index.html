@@ -261,7 +261,6 @@
         }
         #stopBtn.show { display: inline-block; }
 
-        /* Автоматическая активация - индикатор */
         .auto-indicator {
             display: flex;
             align-items: center;
@@ -286,6 +285,9 @@
         .auto-indicator .dot.off {
             background: #555;
             animation: none;
+        }
+        .auto-indicator .dot.recording {
+            background: #e74c3c;
         }
     </style>
 </head>
@@ -312,7 +314,6 @@
         
         <span class="badge idle" id="badge">● Ожидание</span>
         
-        <!-- Автоматический индикатор -->
         <div class="auto-indicator">
             <span class="dot" id="autoDot"></span>
             <span id="autoStatus">Автоматический режим</span>
@@ -395,8 +396,7 @@
         let recordingStartTime = 0;
         let currentVolume = 0;
         let isProcessing = false;
-        let initAttempts = 0;
-        let autoRestartTimer = null;
+        let isWaitingForRestart = false;
 
         // DOM элементы
         const body = document.getElementById('body');
@@ -470,7 +470,7 @@
                     badge.className = 'badge recording';
                     badge.textContent = '● Запись';
                     stopBtn.classList.add('show');
-                    autoDot.className = 'dot';
+                    autoDot.className = 'dot recording';
                     autoStatus.textContent = '🔴 Запись...';
                     break;
                 case 'playing':
@@ -494,15 +494,14 @@
             statusDiv.textContent = statusText;
         }
 
-        // ===================== ОСТАНОВКА =====================
-        function stopEverything() {
-            addLog('⏹ Остановка');
+        // ===================== ПОЛНЫЙ СБРОС И ПЕРЕЗАПУСК =====================
+        function fullResetAndRestart() {
+            if (isWaitingForRestart) return;
+            isWaitingForRestart = true;
             
-            if (autoRestartTimer) {
-                clearTimeout(autoRestartTimer);
-                autoRestartTimer = null;
-            }
+            addLog('🔄 Полный сброс и перезапуск...');
             
+            // Останавливаем всё
             if (animationFrame) {
                 cancelAnimationFrame(animationFrame);
                 animationFrame = null;
@@ -528,43 +527,42 @@
             isProcessing = false;
             audioChunks = [];
             
-            updateUI('idle', '⏹ Остановлено');
-            volumeDiv.textContent = 'Громкость: 0';
-            meterFill.style.width = '0%';
-            currentLevel.textContent = '0';
-            addLog('⏹ Полная остановка');
+            updateUI('idle', '🔄 Перезапуск...');
             
-            // Автоматический перезапуск через 2 секунды
-            autoRestartTimer = setTimeout(() => {
-                addLog('🔄 Автоматический перезапуск...');
+            // Ждём 1 секунду и перезапускаем
+            setTimeout(() => {
+                isWaitingForRestart = false;
+                addLog('🚀 Перезапуск...');
                 initAudio();
-            }, 2000);
+            }, 1000);
         }
 
         // ===================== ИНИЦИАЛИЗАЦИЯ АУДИО =====================
         function initAudio() {
             if (isRunning) return;
+            if (isWaitingForRestart) return;
             
             addLog('🎵 Инициализация аудио...');
             updateUI('idle', '🎵 Инициализация...');
             
             try {
-                // Создаем аудиоконтекст
-                if (!audioContext) {
-                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                // Создаём НОВЫЙ аудиоконтекст
+                if (audioContext) {
+                    try { audioContext.close(); } catch(e) {}
+                    audioContext = null;
                 }
                 
-                // Пробуем возобновить контекст
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                
+                // Пробуем возобновить
                 if (audioContext.state === 'suspended') {
                     audioContext.resume().then(() => {
                         addLog('✅ Аудио контекст активирован');
                         startMicrophone();
                     }).catch(err => {
-                        addLog('⚠️ Не удалось активировать: ' + err.message);
-                        // На iOS нужно взаимодействие пользователя
+                        addLog('⚠️ Ошибка активации: ' + err.message);
+                        // Ждём взаимодействия для iOS
                         if (isIOSDevice) {
-                            addLog('📱 iOS: ожидание взаимодействия...');
-                            // Ждем touch события
                             document.addEventListener('touchstart', function onTouch() {
                                 document.removeEventListener('touchstart', onTouch);
                                 if (audioContext && audioContext.state === 'suspended') {
@@ -576,8 +574,8 @@
                                     startMicrophone();
                                 }
                             }, { once: true });
+                            updateUI('idle', '👆 Коснитесь экрана');
                         } else {
-                            // Автоматический повтор
                             setTimeout(initAudio, 2000);
                         }
                     });
@@ -615,7 +613,6 @@
             })
             .catch(err => {
                 addLog('❌ Ошибка микрофона: ' + err.message);
-                // Повтор через 3 секунды
                 setTimeout(startMicrophone, 3000);
             });
         }
@@ -629,13 +626,7 @@
             }
             
             try {
-                if (!audioContext || audioContext.state === 'closed') {
-                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                }
-                if (audioContext.state === 'suspended') {
-                    audioContext.resume();
-                }
-                
+                // Создаём анализатор
                 analyser = audioContext.createAnalyser();
                 analyser.fftSize = 256;
                 const source = audioContext.createMediaStreamSource(stream);
@@ -670,21 +661,23 @@
                 
                 mediaRecorder.onstop = () => {
                     const duration = (Date.now() - recordingStartTime) / 1000;
+                    
+                    // Если есть данные и не слишком коротко
                     if (audioChunks.length > 0 && duration >= MIN_RECORDING_SECONDS && !isPlaying && !isProcessing) {
                         addLog(`📼 Запись ${duration.toFixed(1)}с`);
                         playWithWebAudio();
-                    } else if (audioChunks.length > 0 && duration < MIN_RECORDING_SECONDS) {
-                        addLog(`⏳ Слишком коротко (${duration.toFixed(1)}с)`);
-                        audioChunks = [];
-                        isRecording = false;
-                        if (isRunning) {
-                            updateUI('listening', '🔇 Ожидание голоса...');
-                        }
                     } else {
+                        if (audioChunks.length > 0 && duration < MIN_RECORDING_SECONDS) {
+                            addLog(`⏳ Слишком коротко (${duration.toFixed(1)}с)`);
+                        }
                         audioChunks = [];
                         isRecording = false;
+                        // Продолжаем слушать
                         if (isRunning) {
-                            updateUI('listening', '🔇 Ожидание голоса...');
+                            updateUI('listening', '🎤 Слушаю...');
+                        } else {
+                            // Если не запущено - перезапускаем
+                            fullResetAndRestart();
                         }
                     }
                 };
@@ -697,15 +690,22 @@
                 
             } catch (err) {
                 addLog('❌ Ошибка: ' + err.message);
-                setTimeout(startListening, 3000);
+                fullResetAndRestart();
             }
         }
 
         // ===================== АНАЛИЗ ГРОМКОСТИ =====================
         function checkVolume() {
-            if (!isRunning) return;
+            if (!isRunning) {
+                return;
+            }
             
             try {
+                if (!analyser) {
+                    fullResetAndRestart();
+                    return;
+                }
+                
                 analyser.getByteFrequencyData(dataArray);
                 let sum = 0;
                 for (let i = 0; i < dataArray.length; i++) {
@@ -719,6 +719,7 @@
                 
                 const now = Date.now();
                 
+                // Если громкость превышает порог и не идёт запись/воспроизведение
                 if (volume > VOICE_THRESHOLD) {
                     lastSoundTime = now;
                     
@@ -731,6 +732,7 @@
                         addLog(`🔴 Запись (громкость ${Math.round(volume)} > порог ${VOICE_THRESHOLD})`);
                     }
                 } else {
+                    // Если тишина и идёт запись
                     if (isRecording && mediaRecorder) {
                         const silenceDuration = (now - lastSoundTime) / 1000;
                         if (silenceDuration > SILENCE_TIMEOUT) {
@@ -744,8 +746,8 @@
                 animationFrame = requestAnimationFrame(checkVolume);
                 
             } catch (err) {
-                addLog('⚠️ Ошибка: ' + err.message);
-                stopEverything();
+                addLog('⚠️ Ошибка анализа: ' + err.message);
+                fullResetAndRestart();
             }
         }
 
@@ -761,20 +763,25 @@
             updateUI('playing', `⏳ Через ${DELAY_SECONDS}с...`);
             addLog(`⏳ Задержка ${DELAY_SECONDS}с`);
             
+            // Сохраняем копию данных
             const chunksCopy = audioChunks.slice();
             audioChunks = [];
+            isRecording = false;
             
             setTimeout(() => {
                 if (chunksCopy.length === 0) {
                     isProcessing = false;
                     isPlaying = false;
                     if (isRunning) {
-                        updateUI('listening', '🔇 Ожидание голоса...');
+                        updateUI('listening', '🎤 Слушаю...');
+                    } else {
+                        fullResetAndRestart();
                     }
                     return;
                 }
                 
                 try {
+                    // Определяем тип
                     let mimeType = 'audio/webm';
                     if (isIOSDevice && chunksCopy[0] && chunksCopy[0].type) {
                         mimeType = chunksCopy[0].type;
@@ -788,6 +795,7 @@
                         .then(arrayBuffer => {
                             URL.revokeObjectURL(url);
                             
+                            // Проверяем аудиоконтекст
                             if (!audioContext || audioContext.state === 'closed') {
                                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
                             }
@@ -803,20 +811,30 @@
                             source.connect(audioContext.destination);
                             
                             updateUI('playing', '🔊 Воспроизведение...');
-                            addLog('🔊 Воспроизведение через Web Audio');
+                            addLog('🔊 Воспроизведение');
                             
                             source.onended = () => {
                                 addLog('✅ Воспроизведение завершено');
                                 isPlaying = false;
                                 isProcessing = false;
-                                if (isRunning) {
-                                    updateUI('listening', '🎤 Слушаю...');
-                                    addLog('✅ Готово');
-                                }
+                                // ПЕРЕЗАПУСКАЕМ для новой записи
+                                setTimeout(() => {
+                                    if (isRunning) {
+                                        updateUI('listening', '🎤 Слушаю...');
+                                        addLog('✅ Готов к записи');
+                                        // Убеждаемся, что слушаем
+                                        if (!isRecording && mediaRecorder && mediaRecorder.state === 'inactive') {
+                                            // Продолжаем слушать
+                                        }
+                                    } else {
+                                        fullResetAndRestart();
+                                    }
+                                }, 300);
                             };
                             
                             source.start(0);
                             
+                            // Таймаут на случай зависания
                             setTimeout(() => {
                                 if (isPlaying) {
                                     addLog('⏹ Принудительное завершение');
@@ -825,6 +843,8 @@
                                     isProcessing = false;
                                     if (isRunning) {
                                         updateUI('listening', '🎤 Слушаю...');
+                                    } else {
+                                        fullResetAndRestart();
                                     }
                                 }
                             }, (audioBuffer.duration * 1000) + 2000);
@@ -833,27 +853,66 @@
                             addLog('❌ Ошибка декодирования: ' + err.message);
                             isPlaying = false;
                             isProcessing = false;
-                            if (isRunning) {
-                                updateUI('listening', '⚠️ Ошибка');
-                                // Автоматическое восстановление
-                                setTimeout(() => {
-                                    if (isRunning) {
-                                        updateUI('listening', '🎤 Слушаю...');
-                                    }
-                                }, 1000);
-                            }
+                            // Перезапускаем через секунду
+                            setTimeout(() => {
+                                if (isRunning) {
+                                    updateUI('listening', '🎤 Слушаю...');
+                                } else {
+                                    fullResetAndRestart();
+                                }
+                            }, 1000);
                         });
                     
                 } catch (err) {
                     addLog('❌ Ошибка: ' + err.message);
                     isPlaying = false;
                     isProcessing = false;
-                    if (isRunning) {
-                        updateUI('listening', '⚠️ Ошибка');
-                    }
+                    fullResetAndRestart();
                 }
                 
             }, DELAY_SECONDS * 1000);
+        }
+
+        // ===================== ОСТАНОВКА =====================
+        function stopEverything() {
+            addLog('⏹ Остановка');
+            
+            if (animationFrame) {
+                cancelAnimationFrame(animationFrame);
+                animationFrame = null;
+            }
+            
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                try { mediaRecorder.stop(); } catch(e) {}
+            }
+            
+            if (stream) {
+                stream.getTracks().forEach(t => t.stop());
+                stream = null;
+            }
+            
+            if (audioContext && audioContext.state !== 'closed') {
+                try { audioContext.close(); } catch(e) {}
+                audioContext = null;
+            }
+            
+            isRunning = false;
+            isRecording = false;
+            isPlaying = false;
+            isProcessing = false;
+            audioChunks = [];
+            
+            updateUI('idle', '⏹ Остановлено');
+            volumeDiv.textContent = 'Громкость: 0';
+            meterFill.style.width = '0%';
+            currentLevel.textContent = '0';
+            addLog('⏹ Полная остановка');
+            
+            // Автоматический перезапуск
+            setTimeout(() => {
+                addLog('🔄 Автоматический перезапуск...');
+                initAudio();
+            }, 2000);
         }
 
         // ===================== СОБЫТИЯ =====================
@@ -892,25 +951,10 @@
         // ===================== ЗАПУСК =====================
         window.addEventListener('load', () => {
             addLog('🚀 Загружено');
-            
-            // Запускаем инициализацию
             setTimeout(initAudio, 500);
-            
-            // Для iOS также пробуем при касании
-            document.addEventListener('touchstart', function onTouch() {
-                if (!isRunning) {
-                    addLog('👆 Касание - активация аудио');
-                    if (audioContext && audioContext.state === 'suspended') {
-                        audioContext.resume();
-                    }
-                    if (!isRunning) {
-                        initAudio();
-                    }
-                }
-            }, { once: true });
         });
 
-        // Восстановление при возврате в приложение
+        // Восстановление при возврате
         document.addEventListener('visibilitychange', () => {
             if (!document.hidden && !isRunning) {
                 addLog('🔄 Возврат в приложение');
@@ -918,7 +962,6 @@
             }
         });
 
-        // Восстановление при фокусе
         window.addEventListener('focus', () => {
             if (!isRunning) {
                 addLog('🔄 Фокус');
@@ -926,9 +969,9 @@
             }
         });
 
-        // Обработка ошибок
         window.onerror = function(msg) {
             addLog('❌ Ошибка: ' + msg);
+            fullResetAndRestart();
             return false;
         };
     </script>
