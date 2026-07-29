@@ -247,38 +247,6 @@
         .threshold-indicator .threshold { color: #e74c3c; font-weight: bold; }
         .threshold-indicator .arrow { color: #444; }
         
-        #iosStartBtn {
-            margin-top: 15px;
-            padding: 15px 40px;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            border: none;
-            border-radius: 30px;
-            color: white;
-            font-size: 18px;
-            font-weight: 600;
-            cursor: pointer;
-            touch-action: manipulation;
-            box-shadow: 0 4px 25px rgba(102, 126, 234, 0.5);
-            -webkit-tap-highlight-color: transparent;
-            width: 100%;
-            max-width: 300px;
-            transition: transform 0.2s;
-        }
-        #iosStartBtn:active { transform: scale(0.95); }
-        #iosStartBtn.hidden { display: none; }
-        
-        .ios-notice {
-            background: rgba(102, 126, 234, 0.1);
-            border: 1px solid rgba(102, 126, 234, 0.2);
-            border-radius: 12px;
-            padding: 12px 16px;
-            margin: 10px 0;
-            font-size: 12px;
-            color: #8899cc;
-            display: none;
-        }
-        .ios-notice.show { display: block; }
-
         #stopBtn {
             margin-top: 10px;
             padding: 8px 20px;
@@ -292,6 +260,33 @@
             display: none;
         }
         #stopBtn.show { display: inline-block; }
+
+        /* Автоматическая активация - индикатор */
+        .auto-indicator {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 8px;
+            font-size: 11px;
+            color: #2ecc71;
+            opacity: 0.7;
+        }
+        .auto-indicator .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #2ecc71;
+            animation: blink 1s infinite;
+        }
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.2; }
+        }
+        .auto-indicator .dot.off {
+            background: #555;
+            animation: none;
+        }
     </style>
 </head>
 <body id="body">
@@ -301,7 +296,7 @@
         
         <div class="status-circle" id="circle">🎙️</div>
         
-        <div id="status">🔇 Ожидание голоса...</div>
+        <div id="status">🔇 Инициализация...</div>
         <div id="volume">Громкость: 0</div>
         <div class="meter">
             <div class="meter-fill" id="meterFill"></div>
@@ -316,6 +311,12 @@
         </div>
         
         <span class="badge idle" id="badge">● Ожидание</span>
+        
+        <!-- Автоматический индикатор -->
+        <div class="auto-indicator">
+            <span class="dot" id="autoDot"></span>
+            <span id="autoStatus">Автоматический режим</span>
+        </div>
         
         <div class="settings">
             <div class="settings-title">
@@ -358,16 +359,14 @@
             </div>
         </div>
         
-        <button id="iosStartBtn">🎵 Нажмите для запуска звука</button>
-        <div class="ios-notice" id="iosNotice">📱 На iOS для работы звука необходимо нажать кнопку выше</div>
-        <button id="stopBtn">⏹ Остановить всё</button>
+        <button id="stopBtn">⏹ Остановить</button>
         
         <div class="log" id="log">
             <div class="log-entry"><span class="time">▶</span> Приложение запущено</div>
         </div>
         
         <div class="info">
-            <span>Автоактивация по голосу · Автоотключение через 1.5 сек тишины</span>
+            <span>🔄 Автоматическая активация · Говорите для записи</span>
         </div>
     </div>
 
@@ -395,8 +394,9 @@
         let isPlaying = false;
         let recordingStartTime = 0;
         let currentVolume = 0;
-        let isAudioReady = false;
         let isProcessing = false;
+        let initAttempts = 0;
+        let autoRestartTimer = null;
 
         // DOM элементы
         const body = document.getElementById('body');
@@ -414,18 +414,9 @@
         const delaySlider = document.getElementById('delaySlider');
         const delayValue = document.getElementById('delayValue');
         const presetBtns = document.querySelectorAll('.preset-btn');
-        const iosStartBtn = document.getElementById('iosStartBtn');
-        const iosNotice = document.getElementById('iosNotice');
         const stopBtn = document.getElementById('stopBtn');
-
-        // ===================== iOS UI =====================
-        if (isIOSDevice) {
-            iosNotice.classList.add('show');
-            iosStartBtn.classList.remove('hidden');
-        } else {
-            iosStartBtn.classList.add('hidden');
-            iosNotice.classList.remove('show');
-        }
+        const autoDot = document.getElementById('autoDot');
+        const autoStatus = document.getElementById('autoStatus');
 
         // ===================== ФУНКЦИИ UI =====================
         function updateThresholdDisplay() {
@@ -470,6 +461,8 @@
                     badge.className = 'badge listening';
                     badge.textContent = '● Слушаю';
                     stopBtn.classList.add('show');
+                    autoDot.className = 'dot';
+                    autoStatus.textContent = '🎤 Слушаю...';
                     break;
                 case 'recording':
                     body.classList.add('recording');
@@ -477,6 +470,8 @@
                     badge.className = 'badge recording';
                     badge.textContent = '● Запись';
                     stopBtn.classList.add('show');
+                    autoDot.className = 'dot';
+                    autoStatus.textContent = '🔴 Запись...';
                     break;
                 case 'playing':
                     body.classList.add('active');
@@ -484,12 +479,16 @@
                     badge.className = 'badge playing';
                     badge.textContent = '● Воспроизведение';
                     stopBtn.classList.add('show');
+                    autoDot.className = 'dot';
+                    autoStatus.textContent = '🔊 Воспроизведение...';
                     break;
                 default:
                     circle.textContent = '🎙️';
                     badge.className = 'badge idle';
                     badge.textContent = '● Ожидание';
                     stopBtn.classList.remove('show');
+                    autoDot.className = 'dot off';
+                    autoStatus.textContent = '⏸ Ожидание';
                     break;
             }
             statusDiv.textContent = statusText;
@@ -498,6 +497,11 @@
         // ===================== ОСТАНОВКА =====================
         function stopEverything() {
             addLog('⏹ Остановка');
+            
+            if (autoRestartTimer) {
+                clearTimeout(autoRestartTimer);
+                autoRestartTimer = null;
+            }
             
             if (animationFrame) {
                 cancelAnimationFrame(animationFrame);
@@ -530,47 +534,67 @@
             currentLevel.textContent = '0';
             addLog('⏹ Полная остановка');
             
-            if (isIOSDevice) {
-                iosStartBtn.classList.remove('hidden');
-                iosNotice.classList.add('show');
-                iosStartBtn.textContent = '🎵 Нажмите для запуска звука';
-                iosStartBtn.style.background = 'linear-gradient(135deg, #667eea, #764ba2)';
-                isAudioReady = false;
-            }
+            // Автоматический перезапуск через 2 секунды
+            autoRestartTimer = setTimeout(() => {
+                addLog('🔄 Автоматический перезапуск...');
+                initAudio();
+            }, 2000);
         }
 
-        // ===================== АУДИО ДЛЯ iOS =====================
-        function initAudioOnIOS() {
-            if (isAudioReady) return;
-            
-            try {
-                audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                if (audioContext.state === 'suspended') {
-                    audioContext.resume();
-                }
-                isAudioReady = true;
-                addLog('✅ Аудио активировано');
-                iosStartBtn.textContent = '✅ Готово';
-                iosStartBtn.style.background = 'linear-gradient(135deg, #2ecc71, #27ae60)';
-                iosNotice.classList.remove('show');
-                setTimeout(autoStart, 500);
-            } catch (err) {
-                addLog('❌ Ошибка: ' + err.message);
-                iosStartBtn.textContent = '🔄 Попробовать снова';
-            }
-        }
-
-        // ===================== ЗАПУСК =====================
-        function autoStart() {
+        // ===================== ИНИЦИАЛИЗАЦИЯ АУДИО =====================
+        function initAudio() {
             if (isRunning) return;
             
-            if (isIOSDevice && !isAudioReady) {
-                addLog('👆 Нажмите кнопку для активации');
-                updateUI('idle', '👆 Нажмите кнопку для активации');
-                return;
-            }
+            addLog('🎵 Инициализация аудио...');
+            updateUI('idle', '🎵 Инициализация...');
             
-            addLog('🔄 Запуск...');
+            try {
+                // Создаем аудиоконтекст
+                if (!audioContext) {
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                
+                // Пробуем возобновить контекст
+                if (audioContext.state === 'suspended') {
+                    audioContext.resume().then(() => {
+                        addLog('✅ Аудио контекст активирован');
+                        startMicrophone();
+                    }).catch(err => {
+                        addLog('⚠️ Не удалось активировать: ' + err.message);
+                        // На iOS нужно взаимодействие пользователя
+                        if (isIOSDevice) {
+                            addLog('📱 iOS: ожидание взаимодействия...');
+                            // Ждем touch события
+                            document.addEventListener('touchstart', function onTouch() {
+                                document.removeEventListener('touchstart', onTouch);
+                                if (audioContext && audioContext.state === 'suspended') {
+                                    audioContext.resume().then(() => {
+                                        addLog('✅ Аудио активировано по касанию');
+                                        startMicrophone();
+                                    });
+                                } else {
+                                    startMicrophone();
+                                }
+                            }, { once: true });
+                        } else {
+                            // Автоматический повтор
+                            setTimeout(initAudio, 2000);
+                        }
+                    });
+                } else {
+                    startMicrophone();
+                }
+            } catch (err) {
+                addLog('❌ Ошибка: ' + err.message);
+                setTimeout(initAudio, 3000);
+            }
+        }
+
+        // ===================== ЗАПУСК МИКРОФОНА =====================
+        function startMicrophone() {
+            if (isRunning) return;
+            
+            addLog('🎤 Запрос микрофона...');
             
             if (stream) {
                 stream.getTracks().forEach(t => t.stop());
@@ -590,17 +614,22 @@
                 startListening();
             })
             .catch(err => {
-                addLog('❌ Ошибка: ' + err.message);
-                setTimeout(autoStart, 5000);
+                addLog('❌ Ошибка микрофона: ' + err.message);
+                // Повтор через 3 секунды
+                setTimeout(startMicrophone, 3000);
             });
         }
 
         // ===================== ПРОСЛУШКА =====================
         function startListening() {
             if (isRunning) return;
+            if (!stream) {
+                startMicrophone();
+                return;
+            }
             
             try {
-                if (!audioContext) {
+                if (!audioContext || audioContext.state === 'closed') {
                     audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 }
                 if (audioContext.state === 'suspended') {
@@ -648,11 +677,15 @@
                         addLog(`⏳ Слишком коротко (${duration.toFixed(1)}с)`);
                         audioChunks = [];
                         isRecording = false;
-                        updateUI('listening', '🔇 Ожидание голоса...');
+                        if (isRunning) {
+                            updateUI('listening', '🔇 Ожидание голоса...');
+                        }
                     } else {
                         audioChunks = [];
                         isRecording = false;
-                        updateUI('listening', '🔇 Ожидание голоса...');
+                        if (isRunning) {
+                            updateUI('listening', '🔇 Ожидание голоса...');
+                        }
                     }
                 };
 
@@ -664,7 +697,7 @@
                 
             } catch (err) {
                 addLog('❌ Ошибка: ' + err.message);
-                setTimeout(autoStart, 3000);
+                setTimeout(startListening, 3000);
             }
         }
 
@@ -713,14 +746,13 @@
             } catch (err) {
                 addLog('⚠️ Ошибка: ' + err.message);
                 stopEverything();
-                setTimeout(autoStart, 3000);
             }
         }
 
         // ===================== ВОСПРОИЗВЕДЕНИЕ ЧЕРЕЗ WEB AUDIO API =====================
         function playWithWebAudio() {
             if (isProcessing || isPlaying) {
-                addLog('⏳ Уже воспроизводится, пропускаем');
+                addLog('⏳ Уже воспроизводится');
                 return;
             }
             
@@ -729,7 +761,6 @@
             updateUI('playing', `⏳ Через ${DELAY_SECONDS}с...`);
             addLog(`⏳ Задержка ${DELAY_SECONDS}с`);
             
-            // Сохраняем копию данных
             const chunksCopy = audioChunks.slice();
             audioChunks = [];
             
@@ -737,12 +768,13 @@
                 if (chunksCopy.length === 0) {
                     isProcessing = false;
                     isPlaying = false;
-                    updateUI('listening', '🔇 Ожидание голоса...');
+                    if (isRunning) {
+                        updateUI('listening', '🔇 Ожидание голоса...');
+                    }
                     return;
                 }
                 
                 try {
-                    // Определяем тип
                     let mimeType = 'audio/webm';
                     if (isIOSDevice && chunksCopy[0] && chunksCopy[0].type) {
                         mimeType = chunksCopy[0].type;
@@ -751,7 +783,6 @@
                     const blob = new Blob(chunksCopy, { type: mimeType });
                     const url = URL.createObjectURL(blob);
                     
-                    // Используем fetch + Web Audio API для воспроизведения
                     fetch(url)
                         .then(response => response.arrayBuffer())
                         .then(arrayBuffer => {
@@ -786,7 +817,6 @@
                             
                             source.start(0);
                             
-                            // Таймаут на случай, если onended не сработает
                             setTimeout(() => {
                                 if (isPlaying) {
                                     addLog('⏹ Принудительное завершение');
@@ -797,37 +827,20 @@
                                         updateUI('listening', '🎤 Слушаю...');
                                     }
                                 }
-                            }, (audioBuffer.duration * 1000) + 1000);
+                            }, (audioBuffer.duration * 1000) + 2000);
                         })
                         .catch(err => {
                             addLog('❌ Ошибка декодирования: ' + err.message);
                             isPlaying = false;
                             isProcessing = false;
-                            updateUI('listening', '⚠️ Ошибка');
-                            
-                            // Пробуем через обычный Audio
-                            try {
-                                const blob2 = new Blob(chunksCopy, { type: 'audio/mp4' });
-                                const url2 = URL.createObjectURL(blob2);
-                                const audio = new Audio();
-                                audio.src = url2;
-                                audio.volume = 1.0;
-                                audio.onended = () => {
-                                    isPlaying = false;
-                                    isProcessing = false;
-                                    URL.revokeObjectURL(url2);
-                                    updateUI('listening', '🎤 Слушаю...');
-                                };
-                                audio.play().catch(e => {
-                                    addLog('❌ Ошибка Audio: ' + e.message);
-                                    isPlaying = false;
-                                    isProcessing = false;
-                                    updateUI('listening', '🎤 Слушаю...');
-                                });
-                            } catch (e2) {
-                                isPlaying = false;
-                                isProcessing = false;
-                                updateUI('listening', '🎤 Слушаю...');
+                            if (isRunning) {
+                                updateUI('listening', '⚠️ Ошибка');
+                                // Автоматическое восстановление
+                                setTimeout(() => {
+                                    if (isRunning) {
+                                        updateUI('listening', '🎤 Слушаю...');
+                                    }
+                                }, 1000);
                             }
                         });
                     
@@ -835,18 +848,15 @@
                     addLog('❌ Ошибка: ' + err.message);
                     isPlaying = false;
                     isProcessing = false;
-                    updateUI('listening', '⚠️ Ошибка');
+                    if (isRunning) {
+                        updateUI('listening', '⚠️ Ошибка');
+                    }
                 }
                 
             }, DELAY_SECONDS * 1000);
         }
 
         // ===================== СОБЫТИЯ =====================
-        
-        iosStartBtn.addEventListener('click', function() {
-            this.textContent = '⏳ Активация...';
-            initAudioOnIOS();
-        });
         
         stopBtn.addEventListener('click', stopEverything);
         
@@ -882,27 +892,41 @@
         // ===================== ЗАПУСК =====================
         window.addEventListener('load', () => {
             addLog('🚀 Загружено');
-            if (isIOSDevice) {
-                addLog('📱 iOS: нажмите кнопку для активации звука');
-                updateUI('idle', '👆 Нажмите кнопку для активации');
-                iosStartBtn.classList.remove('hidden');
-                iosNotice.classList.add('show');
-            } else {
-                setTimeout(autoStart, 1000);
-            }
+            
+            // Запускаем инициализацию
+            setTimeout(initAudio, 500);
+            
+            // Для iOS также пробуем при касании
+            document.addEventListener('touchstart', function onTouch() {
+                if (!isRunning) {
+                    addLog('👆 Касание - активация аудио');
+                    if (audioContext && audioContext.state === 'suspended') {
+                        audioContext.resume();
+                    }
+                    if (!isRunning) {
+                        initAudio();
+                    }
+                }
+            }, { once: true });
         });
 
+        // Восстановление при возврате в приложение
         document.addEventListener('visibilitychange', () => {
             if (!document.hidden && !isRunning) {
-                if (isIOSDevice && !isAudioReady) {
-                    iosStartBtn.classList.remove('hidden');
-                    iosNotice.classList.add('show');
-                } else {
-                    setTimeout(autoStart, 1000);
-                }
+                addLog('🔄 Возврат в приложение');
+                setTimeout(initAudio, 500);
             }
         });
 
+        // Восстановление при фокусе
+        window.addEventListener('focus', () => {
+            if (!isRunning) {
+                addLog('🔄 Фокус');
+                setTimeout(initAudio, 500);
+            }
+        });
+
+        // Обработка ошибок
         window.onerror = function(msg) {
             addLog('❌ Ошибка: ' + msg);
             return false;
