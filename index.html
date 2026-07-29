@@ -2,31 +2,44 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Голосовой повторитель</title>
     
-    <!-- PWA Meta Tags -->
+    <!-- PWA МЕТА-ТЕГИ -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0a0a1a">
+    
+    <!-- iOS СПЕЦИФИЧНЫЕ МЕТА-ТЕГИ -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VoiceLooper">
     
+    <!-- iOS ИКОНКИ -->
+    <link rel="apple-touch-icon" href="apple-icon-57.png" sizes="57x57">
+    <link rel="apple-touch-icon" href="apple-icon-72.png" sizes="72x72">
+    <link rel="apple-touch-icon" href="apple-icon-114.png" sizes="114x114">
+    <link rel="apple-touch-icon" href="apple-icon-144.png" sizes="144x144">
+    <link rel="apple-touch-icon" href="apple-icon-120.png" sizes="120x120">
+    <link rel="apple-touch-icon" href="apple-icon-167.png" sizes="167x167">
+    <link rel="apple-touch-icon" href="apple-icon-180.png" sizes="180x180">
+    
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
             text-align: center;
             padding: 20px;
             background: #0a0a1a;
             color: white;
             min-height: 100vh;
+            min-height: -webkit-fill-available;
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
             transition: background 0.3s;
             -webkit-tap-highlight-color: transparent;
+            -webkit-touch-callout: none;
         }
         body.active { background: #1a0a2e; }
         body.recording { background: #2e0a0a; }
@@ -35,10 +48,20 @@
             max-width: 420px;
             width: 100%;
             padding: 20px;
+            padding-top: env(safe-area-inset-top);
+            padding-bottom: env(safe-area-inset-bottom);
         }
         
-        h1 { font-size: 24px; margin-bottom: 5px; }
-        .subtitle { color: #888; font-size: 13px; margin-bottom: 20px; }
+        h1 { 
+            font-size: 24px; 
+            margin-bottom: 5px;
+            font-weight: 700;
+        }
+        .subtitle { 
+            color: #888; 
+            font-size: 13px; 
+            margin-bottom: 20px;
+        }
         
         .status-circle {
             width: 80px;
@@ -52,8 +75,13 @@
             align-items: center;
             justify-content: center;
             font-size: 32px;
+            -webkit-user-select: none;
+            user-select: none;
         }
-        body.active .status-circle { border-color: #667eea; box-shadow: 0 0 40px rgba(102, 126, 234, 0.3); }
+        body.active .status-circle { 
+            border-color: #667eea; 
+            box-shadow: 0 0 40px rgba(102, 126, 234, 0.3);
+        }
         body.recording .status-circle { 
             border-color: #e74c3c; 
             box-shadow: 0 0 40px rgba(231, 76, 60, 0.4);
@@ -70,6 +98,7 @@
             color: #ccc;
             min-height: 30px;
             margin-top: 10px;
+            font-weight: 500;
         }
         #volume {
             font-size: 14px;
@@ -93,11 +122,14 @@
         }
         
         .settings {
-            background: #111128;
+            background: rgba(17, 17, 40, 0.9);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
             border-radius: 16px;
             padding: 20px;
             margin: 15px 0;
             width: 100%;
+            border: 1px solid rgba(255,255,255,0.05);
         }
         .settings-title {
             font-size: 13px;
@@ -128,6 +160,7 @@
         
         input[type="range"] {
             -webkit-appearance: none;
+            appearance: none;
             width: 100%;
             height: 4px;
             border-radius: 10px;
@@ -137,6 +170,7 @@
         }
         input[type="range"]::-webkit-slider-thumb {
             -webkit-appearance: none;
+            appearance: none;
             width: 18px;
             height: 18px;
             border-radius: 50%;
@@ -182,10 +216,10 @@
             cursor: pointer;
             transition: 0.3s;
             touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
         }
-        .preset-btn:hover, .preset-btn:active {
-            border-color: #667eea;
-            color: #fff;
+        .preset-btn:active {
+            transform: scale(0.95);
         }
         .preset-btn.active {
             border-color: #667eea;
@@ -214,11 +248,12 @@
             overflow-y: auto;
             width: 100%;
             text-align: left;
-            background: #0a0a1a;
+            background: rgba(10, 10, 26, 0.8);
             padding: 6px 12px;
             border-radius: 8px;
             border: 1px solid #1a1a3e;
             line-height: 1.6;
+            -webkit-overflow-scrolling: touch;
         }
         .log-entry { padding: 1px 0; border-bottom: 1px solid #111; }
         .log-entry .time { color: #555; }
@@ -239,7 +274,7 @@
             gap: 8px;
             margin-top: 8px;
             padding: 6px 12px;
-            background: #0a0a1a;
+            background: rgba(10, 10, 26, 0.8);
             border-radius: 8px;
             border: 1px solid #1a1a3e;
             font-size: 12px;
@@ -251,22 +286,42 @@
         .threshold-indicator .threshold { color: #e74c3c; font-weight: bold; }
         .threshold-indicator .arrow { color: #444; }
         
-        /* Install button for PWA */
-        #installBtn {
-            display: none;
+        #iosStartBtn {
             margin-top: 15px;
-            padding: 10px 30px;
+            padding: 15px 40px;
             background: linear-gradient(135deg, #667eea, #764ba2);
             border: none;
-            border-radius: 25px;
+            border-radius: 30px;
             color: white;
-            font-size: 14px;
+            font-size: 18px;
+            font-weight: 600;
             cursor: pointer;
             touch-action: manipulation;
-            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+            box-shadow: 0 4px 25px rgba(102, 126, 234, 0.5);
+            -webkit-tap-highlight-color: transparent;
+            width: 100%;
+            max-width: 300px;
+            transition: transform 0.2s;
         }
-        #installBtn.show {
-            display: inline-block;
+        #iosStartBtn:active {
+            transform: scale(0.95);
+        }
+        #iosStartBtn.hidden {
+            display: none;
+        }
+        
+        .ios-notice {
+            background: rgba(102, 126, 234, 0.1);
+            border: 1px solid rgba(102, 126, 234, 0.2);
+            border-radius: 12px;
+            padding: 12px 16px;
+            margin: 10px 0;
+            font-size: 12px;
+            color: #8899cc;
+            display: none;
+        }
+        .ios-notice.show {
+            display: block;
         }
     </style>
 </head>
@@ -336,8 +391,12 @@
             </div>
         </div>
         
-        <!-- Install Button -->
-        <button id="installBtn">📲 Установить приложение</button>
+        <!-- iOS Кнопка запуска -->
+        <button id="iosStartBtn">🎵 Нажмите для запуска звука</button>
+        
+        <div class="ios-notice" id="iosNotice">
+            📱 На iOS для работы звука необходимо нажать кнопку выше
+        </div>
         
         <div class="log" id="log">
             <div class="log-entry"><span class="time">▶</span> Приложение запущено</div>
@@ -349,29 +408,12 @@
     </div>
 
     <script>
-        // ===================== PWA INSTALL =====================
-        let deferredPrompt;
-        const installBtn = document.getElementById('installBtn');
-
-        window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault();
-            deferredPrompt = e;
-            installBtn.classList.add('show');
-        });
-
-        installBtn.addEventListener('click', async () => {
-            if (deferredPrompt) {
-                deferredPrompt.prompt();
-                const result = await deferredPrompt.userChoice;
-                if (result.outcome === 'accepted') {
-                    console.log('✅ Установлено');
-                    installBtn.classList.remove('show');
-                }
-                deferredPrompt = null;
-            }
-        });
-
-        // ===================== ОСНОВНОЙ КОД =====================
+        // ===================== ОПРЕДЕЛЕНИЕ iOS =====================
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+        const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+        const isIOSDevice = isIOS || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        
+        // ===================== ОСНОВНЫЕ ПЕРЕМЕННЫЕ =====================
         let VOICE_THRESHOLD = 25;
         let DELAY_SECONDS = 3;
         const SILENCE_TIMEOUT = 1.5;
@@ -390,7 +432,10 @@
         let isPlaying = false;
         let recordingStartTime = 0;
         let currentVolume = 0;
+        let isAudioReady = false;
+        let audioElement = null;
 
+        // DOM
         const body = document.getElementById('body');
         const circle = document.getElementById('circle');
         const statusDiv = document.getElementById('status');
@@ -406,7 +451,21 @@
         const delaySlider = document.getElementById('delaySlider');
         const delayValue = document.getElementById('delayValue');
         const presetBtns = document.querySelectorAll('.preset-btn');
+        const iosStartBtn = document.getElementById('iosStartBtn');
+        const iosNotice = document.getElementById('iosNotice');
 
+        // ===================== iOS UI =====================
+        if (isIOSDevice) {
+            iosNotice.classList.add('show');
+            iosStartBtn.classList.remove('hidden');
+            document.querySelector('.info span').textContent = 
+                '📱 iOS: нажмите кнопку для активации звука · Автоотключение через 1.5 сек тишины';
+        } else {
+            iosStartBtn.classList.add('hidden');
+            iosNotice.classList.remove('show');
+        }
+
+        // ===================== ФУНКЦИИ UI =====================
         function updateThresholdDisplay() {
             thresholdValue.textContent = VOICE_THRESHOLD;
             thresholdDisplay.textContent = `Порог: ${VOICE_THRESHOLD}`;
@@ -471,8 +530,48 @@
             statusDiv.textContent = statusText;
         }
 
+        // ===================== АУДИО ДЛЯ iOS =====================
+        function initAudioOnIOS() {
+            if (isAudioReady) return;
+            
+            try {
+                // Создаем тихий звук для активации аудиоконтекста
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                
+                if (audioContext.state === 'suspended') {
+                    audioContext.resume();
+                }
+                
+                // Создаем пустой аудио-элемент для воспроизведения
+                audioElement = new Audio();
+                audioElement.volume = 1.0;
+                
+                isAudioReady = true;
+                addLog('✅ Аудио активировано для iOS');
+                iosStartBtn.textContent = '✅ Звук активирован';
+                iosStartBtn.style.background = 'linear-gradient(135deg, #2ecc71, #27ae60)';
+                iosNotice.classList.remove('show');
+                
+                // Автозапуск после активации
+                setTimeout(autoStart, 500);
+                
+            } catch (err) {
+                addLog('❌ Ошибка активации: ' + err.message);
+                iosStartBtn.textContent = '🔄 Попробовать снова';
+            }
+        }
+
+        // ===================== ЗАПУСК =====================
         function autoStart() {
             if (isRunning) return;
+            
+            // Для iOS проверяем, что аудио активировано
+            if (isIOSDevice && !isAudioReady) {
+                addLog('👆 Нажмите кнопку для активации звука');
+                updateUI('idle', '👆 Нажмите кнопку для активации');
+                return;
+            }
+            
             addLog('🔄 Запуск...');
             
             if (stream) {
@@ -494,27 +593,60 @@
             })
             .catch(err => {
                 addLog('❌ Ошибка: ' + err.message);
+                if (isIOSDevice) {
+                    updateUI('idle', '⚠️ Ошибка: ' + err.message.slice(0, 30));
+                }
                 setTimeout(autoStart, 5000);
             });
         }
 
+        // ===================== ПРОСЛУШКА =====================
         function startListening() {
             if (isRunning) return;
             
             try {
-                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                // Создаем аудиоконтекст если его нет
+                if (!audioContext) {
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                
+                // Для iOS возобновляем контекст
+                if (audioContext.state === 'suspended') {
+                    audioContext.resume();
+                }
+                
                 analyser = audioContext.createAnalyser();
                 analyser.fftSize = 256;
                 const source = audioContext.createMediaStreamSource(stream);
                 source.connect(analyser);
                 dataArray = new Uint8Array(analyser.frequencyBinCount);
 
-                mediaRecorder = new MediaRecorder(stream);
+                // На iOS используем другой mimeType для MediaRecorder
+                let options = {};
+                if (isIOSDevice) {
+                    // iOS поддерживает только определенные форматы
+                    options = { mimeType: 'audio/mp4' };
+                    // Проверяем поддержку
+                    if (!MediaRecorder.isTypeSupported('audio/mp4')) {
+                        options = { mimeType: 'audio/aac' };
+                    }
+                    if (!MediaRecorder.isTypeSupported('audio/aac')) {
+                        options = { mimeType: 'audio/webm;codecs=opus' };
+                    }
+                }
+                
+                try {
+                    mediaRecorder = new MediaRecorder(stream, options);
+                } catch (e) {
+                    mediaRecorder = new MediaRecorder(stream);
+                }
+                
                 mediaRecorder.ondataavailable = event => {
                     if (event.data.size > 0) {
                         audioChunks.push(event.data);
                     }
                 };
+                
                 mediaRecorder.onstop = () => {
                     const duration = (Date.now() - recordingStartTime) / 1000;
                     if (audioChunks.length > 0 && duration >= MIN_RECORDING_SECONDS && !isPlaying) {
@@ -544,6 +676,7 @@
             }
         }
 
+        // ===================== АНАЛИЗ ГРОМКОСТИ =====================
         function checkVolume() {
             if (!isRunning) return;
             
@@ -592,6 +725,7 @@
             }
         }
 
+        // ===================== ВОСПРОИЗВЕДЕНИЕ =====================
         function playWithDelay() {
             isPlaying = true;
             updateUI('playing', `⏳ Через ${DELAY_SECONDS}с...`);
@@ -604,43 +738,93 @@
                     return;
                 }
                 
-                const blob = new Blob(audioChunks, { type: 'audio/webm' });
-                const url = URL.createObjectURL(blob);
-                const audio = new Audio();
-                audio.src = url;
-                
-                audio.onplay = () => {
-                    updateUI('playing', '🔊 Воспроизведение...');
-                    addLog('🔊 Воспроизведение');
-                };
-                
-                audio.onended = () => {
-                    URL.revokeObjectURL(url);
-                    audioChunks = [];
-                    isPlaying = false;
-                    if (isRunning) {
-                        updateUI('listening', '🎤 Слушаю...');
-                        addLog('✅ Готово');
+                try {
+                    // Определяем тип MIME для iOS
+                    let mimeType = 'audio/webm';
+                    if (isIOSDevice) {
+                        // Пробуем разные форматы для iOS
+                        if (audioChunks[0] && audioChunks[0].type) {
+                            mimeType = audioChunks[0].type;
+                        } else {
+                            mimeType = 'audio/mp4';
+                        }
                     }
-                };
-                
-                audio.onerror = () => {
-                    isPlaying = false;
-                    audioChunks = [];
-                    updateUI('listening', '⚠️ Ошибка');
-                    addLog('❌ Ошибка воспроизведения');
-                };
-                
-                audio.play().catch(err => {
+                    
+                    const blob = new Blob(audioChunks, { type: mimeType });
+                    const url = URL.createObjectURL(blob);
+                    
+                    // Для iOS используем аудио-элемент
+                    let audio;
+                    if (isIOSDevice && audioElement) {
+                        audio = audioElement;
+                        audio.src = url;
+                    } else {
+                        audio = new Audio();
+                        audio.src = url;
+                    }
+                    
+                    audio.onplay = () => {
+                        updateUI('playing', '🔊 Воспроизведение...');
+                        addLog('🔊 Воспроизведение');
+                    };
+                    
+                    audio.onended = () => {
+                        URL.revokeObjectURL(url);
+                        audioChunks = [];
+                        isPlaying = false;
+                        if (isRunning) {
+                            updateUI('listening', '🎤 Слушаю...');
+                            addLog('✅ Готово');
+                        }
+                    };
+                    
+                    audio.onerror = (e) => {
+                        isPlaying = false;
+                        audioChunks = [];
+                        updateUI('listening', '⚠️ Ошибка');
+                        addLog('❌ Ошибка воспроизведения: ' + (e.target.error ? e.target.error.message : 'неизвестно'));
+                        // Пробуем другой формат
+                        if (isIOSDevice) {
+                            addLog('🔄 Пробуем другой формат...');
+                            try {
+                                const blob2 = new Blob(audioChunks, { type: 'audio/mp4' });
+                                const url2 = URL.createObjectURL(blob2);
+                                audio.src = url2;
+                                audio.play();
+                            } catch (err2) {
+                                addLog('❌ Ошибка второго формата');
+                            }
+                        }
+                    };
+                    
+                    // Пробуем воспроизвести
+                    const playPromise = audio.play();
+                    if (playPromise !== undefined) {
+                        playPromise.catch(err => {
+                            isPlaying = false;
+                            audioChunks = [];
+                            addLog('❌ ' + err.message);
+                            updateUI('listening', '⚠️ Ошибка');
+                            
+                            if (isIOSDevice) {
+                                addLog('👆 Нажмите кнопку для активации звука');
+                                iosStartBtn.classList.remove('hidden');
+                                iosNotice.classList.add('show');
+                            }
+                        });
+                    }
+                    
+                } catch (err) {
                     isPlaying = false;
                     audioChunks = [];
                     addLog('❌ ' + err.message);
                     updateUI('listening', '⚠️ Ошибка');
-                });
+                }
                 
             }, DELAY_SECONDS * 1000);
         }
 
+        // ===================== ОСТАНОВКА =====================
         function stopAll() {
             isRunning = false;
             isRecording = false;
@@ -650,11 +834,10 @@
                 try { mediaRecorder.stop(); } catch(e) {}
             }
             if (animationFrame) cancelAnimationFrame(animationFrame);
-            if (audioContext) try { audioContext.close(); } catch(e) {}
+            if (audioContext) try { audioContext.close(); audioContext = null; } catch(e) {}
             if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
             
             mediaRecorder = null;
-            audioContext = null;
             analyser = null;
             
             updateUI('idle', '🔇 Остановлено');
@@ -666,6 +849,14 @@
         }
 
         // ===================== СОБЫТИЯ =====================
+        
+        // Кнопка активации для iOS
+        iosStartBtn.addEventListener('click', function() {
+            this.textContent = '⏳ Активация...';
+            initAudioOnIOS();
+        });
+        
+        // Ползунки
         thresholdSlider.addEventListener('input', function() {
             VOICE_THRESHOLD = parseInt(this.value);
             updateThresholdDisplay();
@@ -679,6 +870,7 @@
             addLog(`⏱️ Задержка: ${DELAY_SECONDS}с`);
         });
         
+        // Пресеты
         presetBtns.forEach(btn => {
             btn.addEventListener('click', function() {
                 const threshold = parseInt(this.dataset.threshold);
@@ -702,15 +894,30 @@
         // ===================== ЗАПУСК =====================
         window.addEventListener('load', () => {
             addLog('🚀 Загружено');
-            setTimeout(autoStart, 1000);
-        });
-
-        document.addEventListener('visibilitychange', () => {
-            if (!document.hidden && !isRunning) {
+            
+            if (isIOSDevice) {
+                addLog('📱 iOS: нажмите кнопку для активации звука');
+                updateUI('idle', '👆 Нажмите кнопку для активации');
+                iosStartBtn.classList.remove('hidden');
+                iosNotice.classList.add('show');
+            } else {
                 setTimeout(autoStart, 1000);
             }
         });
 
+        // Восстановление при возврате в приложение
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden && !isRunning) {
+                if (isIOSDevice && !isAudioReady) {
+                    iosStartBtn.classList.remove('hidden');
+                    iosNotice.classList.add('show');
+                } else {
+                    setTimeout(autoStart, 1000);
+                }
+            }
+        });
+
+        // Обработка ошибок
         window.onerror = function(msg) {
             addLog('❌ Ошибка: ' + msg);
             return false;
