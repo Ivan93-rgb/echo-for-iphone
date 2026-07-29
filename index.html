@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Голосовой повторитель</title>
+    
+    <!-- PWA Meta Tags -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0a0a1a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="VoiceLooper">
+    
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 20px;
+            background: #0a0a1a;
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            transition: background 0.3s;
+            -webkit-tap-highlight-color: transparent;
+        }
+        body.active { background: #1a0a2e; }
+        body.recording { background: #2e0a0a; }
+        
+        .container {
+            max-width: 420px;
+            width: 100%;
+            padding: 20px;
+        }
+        
+        h1 { font-size: 24px; margin-bottom: 5px; }
+        .subtitle { color: #888; font-size: 13px; margin-bottom: 20px; }
+        
+        .status-circle {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            margin: 15px auto;
+            background: #1a1a3e;
+            border: 3px solid #333;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+        }
+        body.active .status-circle { border-color: #667eea; box-shadow: 0 0 40px rgba(102, 126, 234, 0.3); }
+        body.recording .status-circle { 
+            border-color: #e74c3c; 
+            box-shadow: 0 0 40px rgba(231, 76, 60, 0.4);
+            animation: pulse 0.5s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        #status {
+            font-size: 18px;
+            color: #ccc;
+            min-height: 30px;
+            margin-top: 10px;
+        }
+        #volume {
+            font-size: 14px;
+            color: #667eea;
+            margin-top: 5px;
+        }
+        
+        .meter {
+            width: 100%;
+            height: 6px;
+            margin: 15px 0;
+            background: #1a1a3e;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .meter-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            transition: width 0.08s;
+        }
+        
+        .settings {
+            background: #111128;
+            border-radius: 16px;
+            padding: 20px;
+            margin: 15px 0;
+            width: 100%;
+        }
+        .settings-title {
+            font-size: 13px;
+            color: #888;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .settings-title .value {
+            color: #667eea;
+            font-weight: bold;
+        }
+        
+        .slider-group {
+            margin: 10px 0;
+        }
+        .slider-group label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            color: #aaa;
+            margin-bottom: 5px;
+        }
+        .slider-group label .val {
+            color: #667eea;
+            font-weight: bold;
+        }
+        
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 4px;
+            border-radius: 10px;
+            background: #1a1a3e;
+            outline: none;
+            transition: 0.3s;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            cursor: pointer;
+            box-shadow: 0 0 20px rgba(102, 126, 234, 0.3);
+        }
+        input[type="range"]::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+            border: none;
+        }
+        
+        .slider-scale {
+            display: flex;
+            justify-content: space-between;
+            font-size: 9px;
+            color: #444;
+            margin-top: 2px;
+            padding: 0 2px;
+        }
+        .slider-scale .low { color: #2ecc71; }
+        .slider-scale .mid { color: #f1c40f; }
+        .slider-scale .high { color: #e74c3c; }
+        
+        .presets {
+            display: flex;
+            gap: 6px;
+            margin-top: 12px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .preset-btn {
+            padding: 4px 12px;
+            border-radius: 20px;
+            border: 1px solid #333;
+            background: transparent;
+            color: #888;
+            font-size: 10px;
+            cursor: pointer;
+            transition: 0.3s;
+            touch-action: manipulation;
+        }
+        .preset-btn:hover, .preset-btn:active {
+            border-color: #667eea;
+            color: #fff;
+        }
+        .preset-btn.active {
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.2);
+            color: #667eea;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 4px 14px;
+            border-radius: 20px;
+            font-size: 11px;
+            margin-top: 10px;
+            transition: 0.3s;
+        }
+        .badge.idle { background: #222; color: #888; }
+        .badge.listening { background: #1a2a4a; color: #667eea; }
+        .badge.recording { background: #4a1a1a; color: #e74c3c; }
+        .badge.playing { background: #1a4a2a; color: #2ecc71; }
+        
+        .log {
+            margin-top: 12px;
+            font-size: 10px;
+            color: #444;
+            max-height: 50px;
+            overflow-y: auto;
+            width: 100%;
+            text-align: left;
+            background: #0a0a1a;
+            padding: 6px 12px;
+            border-radius: 8px;
+            border: 1px solid #1a1a3e;
+            line-height: 1.6;
+        }
+        .log-entry { padding: 1px 0; border-bottom: 1px solid #111; }
+        .log-entry .time { color: #555; }
+        
+        .info {
+            margin-top: 15px;
+            color: #444;
+            font-size: 10px;
+            line-height: 1.6;
+            width: 100%;
+            text-align: center;
+        }
+        .info span { color: #555; }
+
+        .threshold-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 8px;
+            padding: 6px 12px;
+            background: #0a0a1a;
+            border-radius: 8px;
+            border: 1px solid #1a1a3e;
+            font-size: 12px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .threshold-indicator .label { color: #666; }
+        .threshold-indicator .current { color: #2ecc71; font-weight: bold; }
+        .threshold-indicator .threshold { color: #e74c3c; font-weight: bold; }
+        .threshold-indicator .arrow { color: #444; }
+        
+        /* Install button for PWA */
+        #installBtn {
+            display: none;
+            margin-top: 15px;
+            padding: 10px 30px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border: none;
+            border-radius: 25px;
+            color: white;
+            font-size: 14px;
+            cursor: pointer;
+            touch-action: manipulation;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+        #installBtn.show {
+            display: inline-block;
+        }
+    </style>
+</head>
+<body id="body">
+    <div class="container">
+        <h1>🎤 Голосовой повторитель</h1>
+        <div class="subtitle">Говорите — услышите себя с задержкой</div>
+        
+        <div class="status-circle" id="circle">🎙️</div>
+        
+        <div id="status">🔇 Ожидание голоса...</div>
+        <div id="volume">Громкость: 0</div>
+        <div class="meter">
+            <div class="meter-fill" id="meterFill"></div>
+        </div>
+        
+        <div class="threshold-indicator">
+            <span class="label">📊 Уровень:</span>
+            <span class="current" id="currentLevel">0</span>
+            <span class="arrow">→</span>
+            <span class="label">Порог:</span>
+            <span class="threshold" id="thresholdLevel">25</span>
+        </div>
+        
+        <span class="badge idle" id="badge">● Ожидание</span>
+        
+        <div class="settings">
+            <div class="settings-title">
+                <span>⚙️ Настройки</span>
+                <span class="value" id="thresholdDisplay">Порог: 25</span>
+            </div>
+            
+            <div class="slider-group">
+                <label>
+                    <span>Чувствительность</span>
+                    <span class="val" id="thresholdValue">25</span>
+                </label>
+                <input type="range" id="thresholdSlider" 
+                       min="5" max="100" value="25" step="1">
+                <div class="slider-scale">
+                    <span class="low">5 (шёпот)</span>
+                    <span class="mid">50</span>
+                    <span class="high">100 (громко)</span>
+                </div>
+            </div>
+            
+            <div class="slider-group" style="margin-top:12px;">
+                <label>
+                    <span>Задержка (сек)</span>
+                    <span class="val" id="delayValue">3</span>
+                </label>
+                <input type="range" id="delaySlider" 
+                       min="1" max="10" value="3" step="0.5">
+                <div class="slider-scale">
+                    <span>1с</span>
+                    <span>5с</span>
+                    <span>10с</span>
+                </div>
+            </div>
+            
+            <div class="presets">
+                <button class="preset-btn" data-threshold="60" data-delay="3">🔇 Шумно</button>
+                <button class="preset-btn active" data-threshold="25" data-delay="3">🎯 Средняя</button>
+                <button class="preset-btn" data-threshold="12" data-delay="3">🗣️ Шёпот</button>
+                <button class="preset-btn" data-threshold="40" data-delay="5">🎵 Музыка</button>
+                <button class="preset-btn" data-threshold="80" data-delay="3">📢 Крик</button>
+            </div>
+        </div>
+        
+        <!-- Install Button -->
+        <button id="installBtn">📲 Установить приложение</button>
+        
+        <div class="log" id="log">
+            <div class="log-entry"><span class="time">▶</span> Приложение запущено</div>
+        </div>
+        
+        <div class="info">
+            <span>Автоактивация по голосу · Автоотключение через 1.5 сек тишины</span>
+        </div>
+    </div>
+
+    <script>
+        // ===================== PWA INSTALL =====================
+        let deferredPrompt;
+        const installBtn = document.getElementById('installBtn');
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            installBtn.classList.add('show');
+        });
+
+        installBtn.addEventListener('click', async () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const result = await deferredPrompt.userChoice;
+                if (result.outcome === 'accepted') {
+                    console.log('✅ Установлено');
+                    installBtn.classList.remove('show');
+                }
+                deferredPrompt = null;
+            }
+        });
+
+        // ===================== ОСНОВНОЙ КОД =====================
+        let VOICE_THRESHOLD = 25;
+        let DELAY_SECONDS = 3;
+        const SILENCE_TIMEOUT = 1.5;
+        const MIN_RECORDING_SECONDS = 0.5;
+        
+        let isRunning = false;
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let audioContext = null;
+        let analyser = null;
+        let dataArray = null;
+        let animationFrame = null;
+        let stream = null;
+        let lastSoundTime = 0;
+        let isRecording = false;
+        let isPlaying = false;
+        let recordingStartTime = 0;
+        let currentVolume = 0;
+
+        const body = document.getElementById('body');
+        const circle = document.getElementById('circle');
+        const statusDiv = document.getElementById('status');
+        const volumeDiv = document.getElementById('volume');
+        const meterFill = document.getElementById('meterFill');
+        const badge = document.getElementById('badge');
+        const logDiv = document.getElementById('log');
+        const thresholdSlider = document.getElementById('thresholdSlider');
+        const thresholdValue = document.getElementById('thresholdValue');
+        const thresholdDisplay = document.getElementById('thresholdDisplay');
+        const thresholdLevel = document.getElementById('thresholdLevel');
+        const currentLevel = document.getElementById('currentLevel');
+        const delaySlider = document.getElementById('delaySlider');
+        const delayValue = document.getElementById('delayValue');
+        const presetBtns = document.querySelectorAll('.preset-btn');
+
+        function updateThresholdDisplay() {
+            thresholdValue.textContent = VOICE_THRESHOLD;
+            thresholdDisplay.textContent = `Порог: ${VOICE_THRESHOLD}`;
+            thresholdLevel.textContent = VOICE_THRESHOLD;
+        }
+        
+        function updateDelayDisplay() {
+            delayValue.textContent = DELAY_SECONDS;
+        }
+        
+        function updateVolumeDisplay(volume) {
+            currentVolume = Math.round(volume);
+            currentLevel.textContent = currentVolume;
+            volumeDiv.textContent = `Громкость: ${currentVolume} (порог: ${VOICE_THRESHOLD})`;
+            
+            const fill = document.querySelector('.meter-fill');
+            if (currentVolume >= VOICE_THRESHOLD) {
+                fill.style.background = 'linear-gradient(90deg, #2ecc71, #f1c40f)';
+            } else {
+                fill.style.background = 'linear-gradient(90deg, #667eea, #764ba2)';
+            }
+        }
+
+        function addLog(msg) {
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            const time = new Date().toLocaleTimeString();
+            entry.innerHTML = `<span class="time">${time}</span> ${msg}`;
+            logDiv.prepend(entry);
+            if (logDiv.children.length > 20) {
+                logDiv.removeChild(logDiv.lastChild);
+            }
+        }
+
+        function updateUI(state, statusText) {
+            body.className = '';
+            switch(state) {
+                case 'listening':
+                    body.classList.add('active');
+                    circle.textContent = '🎤';
+                    badge.className = 'badge listening';
+                    badge.textContent = '● Слушаю';
+                    break;
+                case 'recording':
+                    body.classList.add('recording');
+                    circle.textContent = '🔴';
+                    badge.className = 'badge recording';
+                    badge.textContent = '● Запись';
+                    break;
+                case 'playing':
+                    body.classList.add('active');
+                    circle.textContent = '🔊';
+                    badge.className = 'badge playing';
+                    badge.textContent = '● Воспроизведение';
+                    break;
+                default:
+                    circle.textContent = '🎙️';
+                    badge.className = 'badge idle';
+                    badge.textContent = '● Ожидание';
+                    break;
+            }
+            statusDiv.textContent = statusText;
+        }
+
+        function autoStart() {
+            if (isRunning) return;
+            addLog('🔄 Запуск...');
+            
+            if (stream) {
+                stream.getTracks().forEach(t => t.stop());
+                stream = null;
+            }
+            
+            navigator.mediaDevices.getUserMedia({ 
+                audio: { 
+                    echoCancellation: false,
+                    noiseSuppression: false,
+                    autoGainControl: false
+                } 
+            })
+            .then(s => {
+                stream = s;
+                addLog('✅ Микрофон получен');
+                startListening();
+            })
+            .catch(err => {
+                addLog('❌ Ошибка: ' + err.message);
+                setTimeout(autoStart, 5000);
+            });
+        }
+
+        function startListening() {
+            if (isRunning) return;
+            
+            try {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                analyser = audioContext.createAnalyser();
+                analyser.fftSize = 256;
+                const source = audioContext.createMediaStreamSource(stream);
+                source.connect(analyser);
+                dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+                mediaRecorder = new MediaRecorder(stream);
+                mediaRecorder.ondataavailable = event => {
+                    if (event.data.size > 0) {
+                        audioChunks.push(event.data);
+                    }
+                };
+                mediaRecorder.onstop = () => {
+                    const duration = (Date.now() - recordingStartTime) / 1000;
+                    if (audioChunks.length > 0 && duration >= MIN_RECORDING_SECONDS && !isPlaying) {
+                        addLog(`📼 Запись ${duration.toFixed(1)}с`);
+                        playWithDelay();
+                    } else if (audioChunks.length > 0 && duration < MIN_RECORDING_SECONDS) {
+                        addLog(`⏳ Слишком коротко (${duration.toFixed(1)}с)`);
+                        audioChunks = [];
+                        isRecording = false;
+                        updateUI('listening', '🔇 Ожидание голоса...');
+                    } else {
+                        audioChunks = [];
+                        isRecording = false;
+                        updateUI('listening', '🔇 Ожидание голоса...');
+                    }
+                };
+
+                isRunning = true;
+                lastSoundTime = Date.now();
+                updateUI('listening', '🎤 Слушаю...');
+                addLog('🎧 Прослушка активна');
+                checkVolume();
+                
+            } catch (err) {
+                addLog('❌ Ошибка: ' + err.message);
+                setTimeout(autoStart, 3000);
+            }
+        }
+
+        function checkVolume() {
+            if (!isRunning) return;
+            
+            try {
+                analyser.getByteFrequencyData(dataArray);
+                let sum = 0;
+                for (let i = 0; i < dataArray.length; i++) {
+                    sum += dataArray[i];
+                }
+                let volume = sum / dataArray.length;
+                
+                updateVolumeDisplay(volume);
+                const percent = Math.min(100, (volume / 255) * 100);
+                meterFill.style.width = percent + '%';
+                
+                const now = Date.now();
+                
+                if (volume > VOICE_THRESHOLD) {
+                    lastSoundTime = now;
+                    
+                    if (!isRecording && mediaRecorder && mediaRecorder.state === 'inactive') {
+                        audioChunks = [];
+                        mediaRecorder.start();
+                        isRecording = true;
+                        recordingStartTime = now;
+                        updateUI('recording', '🔴 Запись...');
+                        addLog(`🔴 Запись (громкость ${Math.round(volume)} > порог ${VOICE_THRESHOLD})`);
+                    }
+                } else {
+                    if (isRecording && mediaRecorder) {
+                        const silenceDuration = (now - lastSoundTime) / 1000;
+                        if (silenceDuration > SILENCE_TIMEOUT) {
+                            mediaRecorder.stop();
+                            updateUI('listening', '⏸ Тишина...');
+                            addLog(`⏸ Тишина ${silenceDuration.toFixed(1)}с`);
+                        }
+                    }
+                }
+                
+                animationFrame = requestAnimationFrame(checkVolume);
+                
+            } catch (err) {
+                addLog('⚠️ Ошибка: ' + err.message);
+                stopAll();
+                setTimeout(autoStart, 3000);
+            }
+        }
+
+        function playWithDelay() {
+            isPlaying = true;
+            updateUI('playing', `⏳ Через ${DELAY_SECONDS}с...`);
+            addLog(`⏳ Задержка ${DELAY_SECONDS}с`);
+            
+            setTimeout(() => {
+                if (audioChunks.length === 0) {
+                    isPlaying = false;
+                    updateUI('listening', '🔇 Ожидание голоса...');
+                    return;
+                }
+                
+                const blob = new Blob(audioChunks, { type: 'audio/webm' });
+                const url = URL.createObjectURL(blob);
+                const audio = new Audio();
+                audio.src = url;
+                
+                audio.onplay = () => {
+                    updateUI('playing', '🔊 Воспроизведение...');
+                    addLog('🔊 Воспроизведение');
+                };
+                
+                audio.onended = () => {
+                    URL.revokeObjectURL(url);
+                    audioChunks = [];
+                    isPlaying = false;
+                    if (isRunning) {
+                        updateUI('listening', '🎤 Слушаю...');
+                        addLog('✅ Готово');
+                    }
+                };
+                
+                audio.onerror = () => {
+                    isPlaying = false;
+                    audioChunks = [];
+                    updateUI('listening', '⚠️ Ошибка');
+                    addLog('❌ Ошибка воспроизведения');
+                };
+                
+                audio.play().catch(err => {
+                    isPlaying = false;
+                    audioChunks = [];
+                    addLog('❌ ' + err.message);
+                    updateUI('listening', '⚠️ Ошибка');
+                });
+                
+            }, DELAY_SECONDS * 1000);
+        }
+
+        function stopAll() {
+            isRunning = false;
+            isRecording = false;
+            isPlaying = false;
+            
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                try { mediaRecorder.stop(); } catch(e) {}
+            }
+            if (animationFrame) cancelAnimationFrame(animationFrame);
+            if (audioContext) try { audioContext.close(); } catch(e) {}
+            if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+            
+            mediaRecorder = null;
+            audioContext = null;
+            analyser = null;
+            
+            updateUI('idle', '🔇 Остановлено');
+            volumeDiv.textContent = 'Громкость: 0';
+            meterFill.style.width = '0%';
+            currentLevel.textContent = '0';
+            audioChunks = [];
+            addLog('⏹ Остановлено');
+        }
+
+        // ===================== СОБЫТИЯ =====================
+        thresholdSlider.addEventListener('input', function() {
+            VOICE_THRESHOLD = parseInt(this.value);
+            updateThresholdDisplay();
+            presetBtns.forEach(b => b.classList.remove('active'));
+            addLog(`🎛️ Чувствительность: ${VOICE_THRESHOLD}`);
+        });
+        
+        delaySlider.addEventListener('input', function() {
+            DELAY_SECONDS = parseFloat(this.value);
+            updateDelayDisplay();
+            addLog(`⏱️ Задержка: ${DELAY_SECONDS}с`);
+        });
+        
+        presetBtns.forEach(btn => {
+            btn.addEventListener('click', function() {
+                const threshold = parseInt(this.dataset.threshold);
+                const delay = parseFloat(this.dataset.delay);
+                
+                VOICE_THRESHOLD = threshold;
+                DELAY_SECONDS = delay;
+                
+                thresholdSlider.value = threshold;
+                delaySlider.value = delay;
+                updateThresholdDisplay();
+                updateDelayDisplay();
+                
+                presetBtns.forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                
+                addLog(`🎯 Пресет: ${this.textContent.trim()} (порог ${threshold})`);
+            });
+        });
+
+        // ===================== ЗАПУСК =====================
+        window.addEventListener('load', () => {
+            addLog('🚀 Загружено');
+            setTimeout(autoStart, 1000);
+        });
+
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden && !isRunning) {
+                setTimeout(autoStart, 1000);
+            }
+        });
+
+        window.onerror = function(msg) {
+            addLog('❌ Ошибка: ' + msg);
+            return false;
+        };
+    </script>
+</body>
+</html>

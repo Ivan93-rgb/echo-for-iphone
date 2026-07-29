@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Проверка PWA</title>
+</head>
+<body>
+    <h1>🔍 Проверка PWA файлов</h1>
+    <div id="results"></div>
+    <script>
+        const files = [
+            'manifest.json',
+            'sw.js',
+            'icon-72.png',
+            'icon-96.png',
+            'icon-128.png',
+            'icon-144.png',
+            'icon-152.png',
+            'icon-192.png',
+            'icon-384.png',
+            'icon-512.png',
+            'screenshot.png'
+        ];
+
+        const results = document.getElementById('results');
+        
+        files.forEach(file => {
+            fetch(file)
+                .then(response => {
+                    const status = response.ok ? '✅' : '❌';
+                    const div = document.createElement('div');
+                    div.textContent = `${status} ${file} - ${response.status}`;
+                    results.appendChild(div);
+                })
+                .catch(err => {
+                    const div = document.createElement('div');
+                    div.textContent = `❌ ${file} - Ошибка: ${err.message}`;
+                    div.style.color = 'red';
+                    results.appendChild(div);
+                });
+        });
+    </script>
+</body>
+</html>
