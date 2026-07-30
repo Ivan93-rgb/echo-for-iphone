@@ -4,92 +4,226 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Голосовой повторитель</title>
+    
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0a0a1a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="VoiceLooper">
+    
     <style>
+        /* ===== ТЕМЫ ===== */
+        :root {
+            --bg: #0a0a1a;
+            --bg-card: #111128;
+            --bg-meter: #1a1a3e;
+            --text: #ffffff;
+            --text-secondary: #888;
+            --text-muted: #444;
+            --border: #333;
+            --accent: #667eea;
+            --accent2: #764ba2;
+            --shadow: rgba(102, 126, 234, 0.3);
+            --log-bg: rgba(10, 10, 26, 0.8);
+            --slider-bg: #1a1a3e;
+            --badge-listening: #1a2a4a;
+            --badge-recording: #4a1a1a;
+            --badge-playing: #1a4a2a;
+            --badge-idle: #222;
+            --recording-bg: #2e0a0a;
+            --active-bg: #1a0a2e;
+            --threshold-low: #2ecc71;
+            --threshold-mid: #f1c40f;
+            --threshold-high: #e74c3c;
+            --btn-stop: #e74c3c;
+            --btn-stop-bg: rgba(231, 76, 60, 0.2);
+        }
+
+        [data-theme="light"] {
+            --bg: #f0f0f5;
+            --bg-card: #ffffff;
+            --bg-meter: #ddd;
+            --text: #1a1a2e;
+            --text-secondary: #555;
+            --text-muted: #999;
+            --border: #ccc;
+            --accent: #5a4fcf;
+            --accent2: #6c3b9e;
+            --shadow: rgba(90, 79, 207, 0.3);
+            --log-bg: rgba(240, 240, 245, 0.9);
+            --slider-bg: #ddd;
+            --badge-listening: #e0e7ff;
+            --badge-recording: #ffe0e0;
+            --badge-playing: #e0ffe0;
+            --badge-idle: #eee;
+            --recording-bg: #f5e0e0;
+            --active-bg: #e8e0f5;
+            --btn-stop: #c0392b;
+            --btn-stop-bg: rgba(192, 57, 43, 0.15);
+        }
+
+        [data-theme="dark"] {
+            --bg: #0a0a1a;
+            --bg-card: #111128;
+            --bg-meter: #1a1a3e;
+            --text: #ffffff;
+            --text-secondary: #888;
+            --text-muted: #444;
+            --border: #333;
+            --accent: #667eea;
+            --accent2: #764ba2;
+            --shadow: rgba(102, 126, 234, 0.3);
+            --log-bg: rgba(10, 10, 26, 0.8);
+            --slider-bg: #1a1a3e;
+            --badge-listening: #1a2a4a;
+            --badge-recording: #4a1a1a;
+            --badge-playing: #1a4a2a;
+            --badge-idle: #222;
+            --recording-bg: #2e0a0a;
+            --active-bg: #1a0a2e;
+            --btn-stop: #e74c3c;
+            --btn-stop-bg: rgba(231, 76, 60, 0.2);
+        }
+
+        [data-theme="neon"] {
+            --bg: #0a0a0a;
+            --bg-card: #1a0033;
+            --bg-meter: #2a004a;
+            --text: #00ffcc;
+            --text-secondary: #66ffdd;
+            --text-muted: #44aa99;
+            --border: #00ffcc;
+            --accent: #ff00ff;
+            --accent2: #00ffff;
+            --shadow: rgba(255, 0, 255, 0.4);
+            --log-bg: rgba(0, 0, 0, 0.8);
+            --slider-bg: #2a004a;
+            --badge-listening: #1a004a;
+            --badge-recording: #4a001a;
+            --badge-playing: #001a4a;
+            --badge-idle: #1a1a1a;
+            --recording-bg: #2a000a;
+            --active-bg: #0a002a;
+            --btn-stop: #ff4444;
+            --btn-stop-bg: rgba(255, 68, 68, 0.2);
+        }
+
+        /* ===== ОБЩИЕ СТИЛИ ===== */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
             text-align: center;
             padding: 20px;
-            background: #0a0a1a;
-            color: white;
+            background: var(--bg);
+            color: var(--text);
             min-height: 100vh;
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            transition: background 0.3s;
+            transition: background 0.4s, color 0.4s;
         }
-        body.active { background: #1a0a2e; }
-        body.recording { background: #2e0a0a; }
+        body.active { background: var(--active-bg); }
+        body.recording { background: var(--recording-bg); }
 
         .container { max-width: 420px; width: 100%; padding: 20px; }
         h1 { font-size: 24px; margin-bottom: 5px; }
-        .subtitle { color: #888; font-size: 13px; margin-bottom: 20px; }
+        .subtitle { color: var(--text-secondary); font-size: 13px; margin-bottom: 20px; }
 
+        /* ===== СТАТУС КРУГ ===== */
         .status-circle {
             width: 80px;
             height: 80px;
             border-radius: 50%;
             margin: 15px auto;
-            background: #1a1a3e;
-            border: 3px solid #333;
+            background: var(--bg-meter);
+            border: 3px solid var(--border);
             transition: all 0.3s;
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 32px;
         }
-        body.active .status-circle { border-color: #667eea; box-shadow: 0 0 40px rgba(102,126,234,0.3); }
-        body.recording .status-circle { border-color: #e74c3c; box-shadow: 0 0 40px rgba(231,76,60,0.4); animation: pulse 0.5s infinite; }
+        body.active .status-circle { border-color: var(--accent); box-shadow: 0 0 40px var(--shadow); }
+        body.recording .status-circle { border-color: var(--threshold-high); box-shadow: 0 0 40px rgba(231,76,60,0.4); animation: pulse 0.5s infinite; }
         @keyframes pulse {
             0% { transform: scale(1); }
             50% { transform: scale(1.05); }
             100% { transform: scale(1); }
         }
 
-        #status { font-size: 18px; color: #ccc; min-height: 30px; margin-top: 10px; }
-        #volume { font-size: 14px; color: #667eea; margin-top: 5px; }
+        #status { font-size: 18px; color: var(--text-secondary); min-height: 30px; margin-top: 10px; }
+        #volume { font-size: 14px; color: var(--accent); margin-top: 5px; }
 
+        /* ===== ИНДИКАТОР ГРОМКОСТИ ===== */
         .meter {
             width: 100%;
             height: 6px;
             margin: 15px 0;
-            background: #1a1a3e;
+            background: var(--bg-meter);
             border-radius: 10px;
             overflow: hidden;
         }
         .meter-fill {
             height: 100%;
             width: 0%;
-            background: linear-gradient(90deg, #667eea, #764ba2);
+            background: linear-gradient(90deg, var(--accent), var(--accent2));
             transition: width 0.08s;
         }
 
+        /* ===== ЭКВАЛАЙЗЕР ===== */
+        .visualizer {
+            width: 100%;
+            height: 60px;
+            background: var(--bg-meter);
+            border-radius: 10px;
+            margin: 15px 0;
+            overflow: hidden;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            gap: 3px;
+            padding: 4px 8px;
+            transition: background 0.3s;
+            border: 1px solid var(--border);
+        }
+        .visualizer-bar {
+            flex: 1;
+            height: 4px;
+            min-height: 4px;
+            background: linear-gradient(180deg, var(--accent), var(--accent2));
+            border-radius: 2px;
+            transition: height 0.08s;
+        }
+
+        /* ===== НАСТРОЙКИ ===== */
         .settings {
-            background: #111128;
+            background: var(--bg-card);
             border-radius: 16px;
             padding: 20px;
             margin: 15px 0;
             width: 100%;
+            transition: background 0.3s;
+            border: 1px solid var(--border);
         }
         .settings-title {
             font-size: 13px;
-            color: #888;
+            color: var(--text-secondary);
             margin-bottom: 15px;
             display: flex;
             justify-content: space-between;
         }
-        .settings-title .value { color: #667eea; font-weight: bold; }
+        .settings-title .value { color: var(--accent); font-weight: bold; }
 
         .slider-group { margin: 10px 0; }
         .slider-group label {
             display: flex;
             justify-content: space-between;
             font-size: 13px;
-            color: #aaa;
+            color: var(--text-secondary);
             margin-bottom: 5px;
         }
-        .slider-group label .val { color: #667eea; font-weight: bold; }
+        .slider-group label .val { color: var(--accent); font-weight: bold; }
 
         input[type="range"] {
             -webkit-appearance: none;
@@ -97,8 +231,9 @@
             width: 100%;
             height: 4px;
             border-radius: 10px;
-            background: #1a1a3e;
+            background: var(--slider-bg);
             outline: none;
+            transition: background 0.3s;
         }
         input[type="range"]::-webkit-slider-thumb {
             -webkit-appearance: none;
@@ -106,15 +241,15 @@
             width: 18px;
             height: 18px;
             border-radius: 50%;
-            background: linear-gradient(135deg, #667eea, #764ba2);
+            background: linear-gradient(135deg, var(--accent), var(--accent2));
             cursor: pointer;
-            box-shadow: 0 0 20px rgba(102,126,234,0.3);
+            box-shadow: 0 0 20px var(--shadow);
         }
         input[type="range"]::-moz-range-thumb {
             width: 18px;
             height: 18px;
             border-radius: 50%;
-            background: #667eea;
+            background: var(--accent);
             cursor: pointer;
             border: none;
         }
@@ -123,14 +258,15 @@
             display: flex;
             justify-content: space-between;
             font-size: 9px;
-            color: #444;
+            color: var(--text-muted);
             margin-top: 2px;
             padding: 0 2px;
         }
-        .slider-scale .low { color: #2ecc71; }
-        .slider-scale .mid { color: #f1c40f; }
-        .slider-scale .high { color: #e74c3c; }
+        .slider-scale .low { color: var(--threshold-low); }
+        .slider-scale .mid { color: var(--threshold-mid); }
+        .slider-scale .high { color: var(--threshold-high); }
 
+        /* ===== КНОПКИ ПРЕСЕТОВ ===== */
         .presets {
             display: flex;
             gap: 6px;
@@ -141,20 +277,21 @@
         .preset-btn {
             padding: 4px 12px;
             border-radius: 20px;
-            border: 1px solid #333;
+            border: 1px solid var(--border);
             background: transparent;
-            color: #888;
+            color: var(--text-secondary);
             font-size: 10px;
             cursor: pointer;
             transition: 0.3s;
         }
         .preset-btn:active { transform: scale(0.95); }
         .preset-btn.active {
-            border-color: #667eea;
-            background: rgba(102,126,234,0.2);
-            color: #667eea;
+            border-color: var(--accent);
+            background: rgba(102, 126, 234, 0.2);
+            color: var(--accent);
         }
 
+        /* ===== БЕЙДЖ ===== */
         .badge {
             display: inline-block;
             padding: 4px 14px;
@@ -163,58 +300,63 @@
             margin-top: 10px;
             transition: 0.3s;
         }
-        .badge.idle { background: #222; color: #888; }
-        .badge.listening { background: #1a2a4a; color: #667eea; }
-        .badge.recording { background: #4a1a1a; color: #e74c3c; }
-        .badge.playing { background: #1a4a2a; color: #2ecc71; }
+        .badge.idle { background: var(--badge-idle); color: var(--text-secondary); }
+        .badge.listening { background: var(--badge-listening); color: var(--accent); }
+        .badge.recording { background: var(--badge-recording); color: var(--threshold-high); }
+        .badge.playing { background: var(--badge-playing); color: var(--threshold-low); }
 
+        /* ===== ЛОГ ===== */
         .log {
             margin-top: 12px;
             font-size: 10px;
-            color: #444;
+            color: var(--text-muted);
             max-height: 50px;
             overflow-y: auto;
             width: 100%;
             text-align: left;
-            background: #0a0a1a;
+            background: var(--log-bg);
             padding: 6px 12px;
             border-radius: 8px;
-            border: 1px solid #1a1a3e;
+            border: 1px solid var(--border);
             line-height: 1.6;
+            transition: background 0.3s, color 0.3s;
         }
-        .log-entry { padding: 1px 0; border-bottom: 1px solid #111; }
-        .log-entry .time { color: #555; }
+        .log-entry { padding: 1px 0; border-bottom: 1px solid var(--border); }
+        .log-entry .time { color: var(--text-muted); }
 
         .info {
             margin-top: 15px;
-            color: #444;
+            color: var(--text-muted);
             font-size: 10px;
             line-height: 1.6;
             width: 100%;
             text-align: center;
         }
 
+        /* ===== ИНДИКАТОР ПОРОГА ===== */
         .threshold-indicator {
             display: flex;
             align-items: center;
             gap: 8px;
             margin-top: 8px;
             padding: 6px 12px;
-            background: #0a0a1a;
+            background: var(--log-bg);
             border-radius: 8px;
-            border: 1px solid #1a1a3e;
+            border: 1px solid var(--border);
             font-size: 12px;
             flex-wrap: wrap;
             justify-content: center;
+            transition: background 0.3s, border 0.3s;
         }
-        .threshold-indicator .label { color: #666; }
-        .threshold-indicator .current { color: #2ecc71; font-weight: bold; }
-        .threshold-indicator .threshold { color: #e74c3c; font-weight: bold; }
+        .threshold-indicator .label { color: var(--text-secondary); }
+        .threshold-indicator .current { color: var(--threshold-low); font-weight: bold; }
+        .threshold-indicator .threshold { color: var(--threshold-high); font-weight: bold; }
 
+        /* ===== КНОПКИ ===== */
         .btn-main {
             margin-top: 15px;
             padding: 12px 30px;
-            background: linear-gradient(135deg, #667eea, #764ba2);
+            background: linear-gradient(135deg, var(--accent), var(--accent2));
             border: none;
             border-radius: 25px;
             color: white;
@@ -223,13 +365,38 @@
             cursor: pointer;
             width: 100%;
             max-width: 300px;
-            transition: transform 0.2s;
+            transition: transform 0.2s, background 0.3s;
         }
         .btn-main:active { transform: scale(0.95); }
-        .btn-main.running { background: linear-gradient(135deg, #e74c3c, #c0392b); }
+        .btn-main.running { background: linear-gradient(135deg, var(--btn-stop), #c0392b); }
+
+        /* ===== КНОПКИ ТЕМ ===== */
+        .theme-buttons {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            margin: 10px 0;
+            flex-wrap: wrap;
+        }
+        .theme-btn {
+            padding: 6px 16px;
+            border-radius: 20px;
+            border: 2px solid var(--border);
+            background: transparent;
+            color: var(--text-secondary);
+            font-size: 12px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .theme-btn:active { transform: scale(0.95); }
+        .theme-btn.active {
+            border-color: var(--accent);
+            color: var(--accent);
+            background: rgba(102, 126, 234, 0.15);
+        }
     </style>
 </head>
-<body id="body">
+<body id="body" data-theme="dark">
     <div class="container">
         <h1>🎤 Голосовой повторитель</h1>
         <div class="subtitle">Говорите — услышите себя с задержкой</div>
@@ -237,9 +404,13 @@
         <div class="status-circle" id="circle">🎙️</div>
         <div id="status">Нажмите "Старт"</div>
         <div id="volume">Громкость: 0</div>
+
         <div class="meter">
             <div class="meter-fill" id="meterFill"></div>
         </div>
+
+        <!-- ЭКВАЛАЙЗЕР (ВИЗУАЛИЗАЦИЯ) -->
+        <div class="visualizer" id="visualizer"></div>
 
         <div class="threshold-indicator">
             <span class="label">📊 Уровень:</span>
@@ -250,6 +421,13 @@
 
         <span class="badge idle" id="badge">● Ожидание</span>
         <button class="btn-main" id="startBtn">▶ Старт</button>
+
+        <!-- КНОПКИ ВЫБОРА ТЕМЫ -->
+        <div class="theme-buttons">
+            <button class="theme-btn active" data-theme="dark">🌙 Тёмная</button>
+            <button class="theme-btn" data-theme="light">☀️ Светлая</button>
+            <button class="theme-btn" data-theme="neon">💜 Неон</button>
+        </div>
 
         <div class="settings">
             <div class="settings-title">
@@ -302,6 +480,43 @@
     </div>
 
     <script>
+        // ===================== СОХРАНЕНИЕ НАСТРОЕК =====================
+        const STORAGE_KEY = 'voice_looper_settings';
+
+        // Загрузка сохранённых настроек
+        function loadSettings() {
+            try {
+                const saved = localStorage.getItem(STORAGE_KEY);
+                if (saved) {
+                    const settings = JSON.parse(saved);
+                    if (settings.threshold) VOICE_THRESHOLD = settings.threshold;
+                    if (settings.delay) DELAY_SECONDS = settings.delay;
+                    if (settings.theme) {
+                        document.body.setAttribute('data-theme', settings.theme);
+                        updateThemeButtons(settings.theme);
+                    }
+                    return true;
+                }
+            } catch (e) {
+                console.warn('Не удалось загрузить настройки', e);
+            }
+            return false;
+        }
+
+        // Сохранение настроек
+        function saveSettings() {
+            try {
+                const settings = {
+                    threshold: VOICE_THRESHOLD,
+                    delay: DELAY_SECONDS,
+                    theme: document.body.getAttribute('data-theme') || 'dark'
+                };
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+            } catch (e) {
+                console.warn('Не удалось сохранить настройки', e);
+            }
+        }
+
         // ===================== ПЕРЕМЕННЫЕ =====================
         let VOICE_THRESHOLD = 25;
         let DELAY_SECONDS = 3;
@@ -324,11 +539,12 @@
         let isProcessing = false;
 
         // DOM
-        const body = document.getElementById('body');
+        const body = document.body;
         const circle = document.getElementById('circle');
         const statusDiv = document.getElementById('status');
         const volumeDiv = document.getElementById('volume');
         const meterFill = document.getElementById('meterFill');
+        const visualizer = document.getElementById('visualizer');
         const badge = document.getElementById('badge');
         const logDiv = document.getElementById('log');
         const thresholdSlider = document.getElementById('thresholdSlider');
@@ -340,6 +556,7 @@
         const delayValue = document.getElementById('delayValue');
         const presetBtns = document.querySelectorAll('.preset-btn');
         const startBtn = document.getElementById('startBtn');
+        const themeBtns = document.querySelectorAll('.theme-btn');
 
         // ===================== UI =====================
         function updateThresholdDisplay() {
@@ -358,9 +575,43 @@
             volumeDiv.textContent = `Громкость: ${currentVolume} (порог: ${VOICE_THRESHOLD})`;
             const fill = document.querySelector('.meter-fill');
             if (currentVolume >= VOICE_THRESHOLD) {
-                fill.style.background = 'linear-gradient(90deg, #2ecc71, #f1c40f)';
+                fill.style.background = `linear-gradient(90deg, var(--threshold-low), var(--threshold-mid))`;
             } else {
-                fill.style.background = 'linear-gradient(90deg, #667eea, #764ba2)';
+                fill.style.background = `linear-gradient(90deg, var(--accent), var(--accent2))`;
+            }
+        }
+
+        // ===== ВИЗУАЛИЗАТОР (ЭКВАЛАЙЗЕР) =====
+        let visualizerBars = [];
+
+        function initVisualizer() {
+            visualizer.innerHTML = '';
+            const count = 24;
+            for (let i = 0; i < count; i++) {
+                const bar = document.createElement('div');
+                bar.className = 'visualizer-bar';
+                visualizer.appendChild(bar);
+                visualizerBars.push(bar);
+            }
+        }
+        initVisualizer();
+
+        function updateVisualizer(volume) {
+            const normalized = Math.min(1, volume / 255);
+            const height = 4 + normalized * 56;
+            const count = visualizerBars.length;
+            // Создаем волну: центр громче, края тише
+            for (let i = 0; i < count; i++) {
+                const distance = Math.abs(i - count / 2) / (count / 2);
+                const factor = Math.max(0, 1 - distance * 0.7);
+                const barHeight = 4 + normalized * factor * 56;
+                visualizerBars[i].style.height = barHeight + 'px';
+                // Цвет в зависимости от громкости
+                if (volume > VOICE_THRESHOLD) {
+                    visualizerBars[i].style.background = `linear-gradient(180deg, var(--threshold-high), var(--threshold-mid))`;
+                } else {
+                    visualizerBars[i].style.background = `linear-gradient(180deg, var(--accent), var(--accent2))`;
+                }
             }
         }
 
@@ -409,7 +660,24 @@
             statusDiv.textContent = statusText;
         }
 
-        // ===================== ЗАПУСК =====================
+        // ===== ТЕМЫ =====
+        function updateThemeButtons(theme) {
+            themeBtns.forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.theme === theme);
+            });
+        }
+
+        themeBtns.forEach(btn => {
+            btn.addEventListener('click', function() {
+                const theme = this.dataset.theme;
+                body.setAttribute('data-theme', theme);
+                updateThemeButtons(theme);
+                saveSettings();
+                addLog(`🎨 Тема: ${this.textContent.trim()}`);
+            });
+        });
+
+        // ===== ЗАПУСК =====
         function startApp() {
             if (isRunning) {
                 stopEverything();
@@ -419,7 +687,6 @@
             addLog('🚀 Запуск...');
             updateUI('idle', '🎵 Инициализация...');
 
-            // Создаём аудиоконтекст по жесту пользователя
             try {
                 audioContext = new(window.AudioContext || window.webkitAudioContext)();
 
@@ -429,7 +696,6 @@
                         startMicrophone();
                     }).catch(err => {
                         addLog('⚠️ ' + err.message);
-                        // Ждём касания для iOS
                         document.addEventListener('touchstart', function onTouch() {
                             document.removeEventListener('touchstart', onTouch);
                             if (audioContext && audioContext.state === 'suspended') {
@@ -484,7 +750,7 @@
                 });
         }
 
-        // ===================== ПРОСЛУШКА =====================
+        // ===== ПРОСЛУШКА =====
         function startListening() {
             if (isRunning) return;
             if (!stream) {
@@ -504,7 +770,6 @@
                 source.connect(analyser);
                 dataArray = new Uint8Array(analyser.frequencyBinCount);
 
-                // MediaRecorder
                 try {
                     mediaRecorder = new MediaRecorder(stream);
                 } catch (e) {
@@ -543,7 +808,7 @@
             }
         }
 
-        // ===================== АНАЛИЗ ГРОМКОСТИ =====================
+        // ===== АНАЛИЗ ГРОМКОСТИ =====
         function checkVolume() {
             if (!isRunning || !analyser) return;
 
@@ -556,6 +821,8 @@
                 let volume = sum / dataArray.length;
 
                 updateVolumeDisplay(volume);
+                updateVisualizer(volume);
+
                 const percent = Math.min(100, (volume / 255) * 100);
                 meterFill.style.width = percent + '%';
 
@@ -591,7 +858,7 @@
             }
         }
 
-        // ===================== ВОСПРОИЗВЕДЕНИЕ (Web Audio API) =====================
+        // ===== ВОСПРОИЗВЕДЕНИЕ =====
         function playRecording() {
             if (isProcessing || isPlaying) return;
 
@@ -614,7 +881,6 @@
                     return;
                 }
 
-                // Убедимся, что контекст активен
                 if (!audioContext || audioContext.state === 'closed') {
                     audioContext = new(window.AudioContext || window.webkitAudioContext)();
                 }
@@ -622,7 +888,7 @@
                     audioContext.resume().then(() => {
                         doPlay(chunksCopy);
                     }).catch(err => {
-                        addLog('❌ Ошибка возобновления контекста: ' + err.message);
+                        addLog('❌ Ошибка контекста: ' + err.message);
                         isProcessing = false;
                         isPlaying = false;
                         if (isRunning) updateUI('listening', '🎤 Слушаю...');
@@ -636,9 +902,7 @@
 
         function doPlay(chunks) {
             try {
-                // Пробуем webm
                 let mimeType = 'audio/webm';
-                // Проверим, есть ли тип у первого чанка
                 if (chunks[0] && chunks[0].type) {
                     mimeType = chunks[0].type;
                 }
@@ -658,7 +922,7 @@
                         source.connect(audioContext.destination);
 
                         updateUI('playing', '🔊 Воспроизведение...');
-                        addLog('🔊 Воспроизведение через Web Audio');
+                        addLog('🔊 Воспроизведение');
 
                         source.onended = () => {
                             addLog('✅ Воспроизведение завершено');
@@ -672,7 +936,6 @@
 
                         source.start(0);
 
-                        // Таймаут на случай, если onended не сработает
                         setTimeout(() => {
                             if (isPlaying) {
                                 try { source.stop(); } catch (e) {}
@@ -686,8 +949,7 @@
                     })
                     .catch(err => {
                         addLog('❌ Ошибка декодирования: ' + err.message);
-                        // Пробуем через Audio элемент как fallback
-                        addLog('🔄 Пробуем Audio элемент...');
+                        // Fallback на Audio
                         try {
                             const blob2 = new Blob(chunks, { type: 'audio/mp4' });
                             const url2 = URL.createObjectURL(blob2);
@@ -707,12 +969,7 @@
                                 isProcessing = false;
                                 if (isRunning) updateUI('listening', '🎤 Слушаю...');
                             };
-                            audio.play().catch(e => {
-                                addLog('❌ ' + e.message);
-                                isPlaying = false;
-                                isProcessing = false;
-                                if (isRunning) updateUI('listening', '🎤 Слушаю...');
-                            });
+                            audio.play();
                         } catch (e2) {
                             addLog('❌ ' + e2.message);
                             isPlaying = false;
@@ -729,7 +986,7 @@
             }
         }
 
-        // ===================== ОСТАНОВКА =====================
+        // ===== ОСТАНОВКА =====
         function stopEverything() {
             addLog('⏹ Остановка');
 
@@ -758,6 +1015,9 @@
             isProcessing = false;
             audioChunks = [];
 
+            // Сброс визуализатора
+            visualizerBars.forEach(bar => bar.style.height = '4px');
+
             updateUI('idle', '⏹ Остановлено');
             volumeDiv.textContent = 'Громкость: 0';
             meterFill.style.width = '0%';
@@ -773,12 +1033,14 @@
             VOICE_THRESHOLD = parseInt(this.value);
             updateThresholdDisplay();
             presetBtns.forEach(b => b.classList.remove('active'));
+            saveSettings();
             addLog(`🎛️ Чувствительность: ${VOICE_THRESHOLD}`);
         });
 
         delaySlider.addEventListener('input', function() {
             DELAY_SECONDS = parseFloat(this.value);
             updateDelayDisplay();
+            saveSettings();
             addLog(`⏱️ Задержка: ${DELAY_SECONDS}с`);
         });
 
@@ -794,13 +1056,22 @@
                 updateDelayDisplay();
                 presetBtns.forEach(b => b.classList.remove('active'));
                 this.classList.add('active');
+                saveSettings();
                 addLog(`🎯 Пресет: ${this.textContent.trim()}`);
             });
         });
 
-        // ===================== АВТОЗАПУСК =====================
+        // ===================== ЗАГРУЗКА СОХРАНЁННЫХ НАСТРОЕК =====================
         window.addEventListener('load', () => {
             addLog('🚀 Загружено');
+            const hasSettings = loadSettings();
+            if (hasSettings) {
+                thresholdSlider.value = VOICE_THRESHOLD;
+                delaySlider.value = DELAY_SECONDS;
+                updateThresholdDisplay();
+                updateDelayDisplay();
+                addLog('💾 Настройки загружены');
+            }
             setTimeout(startApp, 1000);
         });
 
