@@ -12,7 +12,6 @@
     <meta name="apple-mobile-web-app-title" content="VoiceLooper">
     
     <style>
-        /* ===== ТЕМЫ ===== */
         :root {
             --bg: #0a0a1a;
             --bg-card: #111128;
@@ -108,7 +107,6 @@
             --btn-stop-bg: rgba(255, 68, 68, 0.2);
         }
 
-        /* ===== ОБЩИЕ СТИЛИ ===== */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
@@ -130,7 +128,6 @@
         h1 { font-size: 24px; margin-bottom: 5px; }
         .subtitle { color: var(--text-secondary); font-size: 13px; margin-bottom: 20px; }
 
-        /* ===== СТАТУС КРУГ ===== */
         .status-circle {
             width: 80px;
             height: 80px;
@@ -155,7 +152,6 @@
         #status { font-size: 18px; color: var(--text-secondary); min-height: 30px; margin-top: 10px; }
         #volume { font-size: 14px; color: var(--accent); margin-top: 5px; }
 
-        /* ===== ИНДИКАТОР ГРОМКОСТИ ===== */
         .meter {
             width: 100%;
             height: 6px;
@@ -171,7 +167,6 @@
             transition: width 0.08s;
         }
 
-        /* ===== ЭКВАЛАЙЗЕР ===== */
         .visualizer {
             width: 100%;
             height: 60px;
@@ -196,7 +191,6 @@
             transition: height 0.08s;
         }
 
-        /* ===== НАСТРОЙКИ ===== */
         .settings {
             background: var(--bg-card);
             border-radius: 16px;
@@ -266,7 +260,6 @@
         .slider-scale .mid { color: var(--threshold-mid); }
         .slider-scale .high { color: var(--threshold-high); }
 
-        /* ===== КНОПКИ ПРЕСЕТОВ ===== */
         .presets {
             display: flex;
             gap: 6px;
@@ -291,7 +284,6 @@
             color: var(--accent);
         }
 
-        /* ===== БЕЙДЖ ===== */
         .badge {
             display: inline-block;
             padding: 4px 14px;
@@ -305,7 +297,6 @@
         .badge.recording { background: var(--badge-recording); color: var(--threshold-high); }
         .badge.playing { background: var(--badge-playing); color: var(--threshold-low); }
 
-        /* ===== ЛОГ ===== */
         .log {
             margin-top: 12px;
             font-size: 10px;
@@ -333,7 +324,6 @@
             text-align: center;
         }
 
-        /* ===== ИНДИКАТОР ПОРОГА ===== */
         .threshold-indicator {
             display: flex;
             align-items: center;
@@ -352,7 +342,6 @@
         .threshold-indicator .current { color: var(--threshold-low); font-weight: bold; }
         .threshold-indicator .threshold { color: var(--threshold-high); font-weight: bold; }
 
-        /* ===== КНОПКИ ===== */
         .btn-main {
             margin-top: 15px;
             padding: 12px 30px;
@@ -370,7 +359,6 @@
         .btn-main:active { transform: scale(0.95); }
         .btn-main.running { background: linear-gradient(135deg, var(--btn-stop), #c0392b); }
 
-        /* ===== КНОПКИ ТЕМ ===== */
         .theme-buttons {
             display: flex;
             gap: 8px;
@@ -409,7 +397,6 @@
             <div class="meter-fill" id="meterFill"></div>
         </div>
 
-        <!-- ЭКВАЛАЙЗЕР (ВИЗУАЛИЗАЦИЯ) -->
         <div class="visualizer" id="visualizer"></div>
 
         <div class="threshold-indicator">
@@ -422,7 +409,6 @@
         <span class="badge idle" id="badge">● Ожидание</span>
         <button class="btn-main" id="startBtn">▶ Старт</button>
 
-        <!-- КНОПКИ ВЫБОРА ТЕМЫ -->
         <div class="theme-buttons">
             <button class="theme-btn active" data-theme="dark">🌙 Тёмная</button>
             <button class="theme-btn" data-theme="light">☀️ Светлая</button>
@@ -433,6 +419,20 @@
             <div class="settings-title">
                 <span>⚙️ Настройки</span>
                 <span class="value" id="thresholdDisplay">Порог: 25</span>
+            </div>
+
+            <!-- ГРОМКОСТЬ ВОСПРОИЗВЕДЕНИЯ (НОВЫЙ СЛАЙДЕР) -->
+            <div class="slider-group">
+                <label>
+                    <span>🔊 Громкость воспроизведения</span>
+                    <span class="val" id="gainValue">200%</span>
+                </label>
+                <input type="range" id="gainSlider" min="50" max="400" value="200" step="5">
+                <div class="slider-scale">
+                    <span>50%</span>
+                    <span>200%</span>
+                    <span>400%</span>
+                </div>
             </div>
 
             <div class="slider-group">
@@ -462,11 +462,11 @@
             </div>
 
             <div class="presets">
-                <button class="preset-btn" data-threshold="60" data-delay="3">🔇 Шумно</button>
-                <button class="preset-btn active" data-threshold="25" data-delay="3">🎯 Средняя</button>
-                <button class="preset-btn" data-threshold="12" data-delay="3">🗣️ Шёпот</button>
-                <button class="preset-btn" data-threshold="40" data-delay="5">🎵 Музыка</button>
-                <button class="preset-btn" data-threshold="80" data-delay="3">📢 Крик</button>
+                <button class="preset-btn" data-threshold="60" data-delay="3" data-gain="200">🔇 Шумно</button>
+                <button class="preset-btn active" data-threshold="25" data-delay="3" data-gain="200">🎯 Средняя</button>
+                <button class="preset-btn" data-threshold="12" data-delay="3" data-gain="250">🗣️ Шёпот</button>
+                <button class="preset-btn" data-threshold="40" data-delay="5" data-gain="200">🎵 Музыка</button>
+                <button class="preset-btn" data-threshold="80" data-delay="3" data-gain="150">📢 Крик</button>
             </div>
         </div>
 
@@ -483,7 +483,6 @@
         // ===================== СОХРАНЕНИЕ НАСТРОЕК =====================
         const STORAGE_KEY = 'voice_looper_settings';
 
-        // Загрузка сохранённых настроек
         function loadSettings() {
             try {
                 const saved = localStorage.getItem(STORAGE_KEY);
@@ -491,35 +490,33 @@
                     const settings = JSON.parse(saved);
                     if (settings.threshold) VOICE_THRESHOLD = settings.threshold;
                     if (settings.delay) DELAY_SECONDS = settings.delay;
+                    if (settings.gain) PLAYBACK_GAIN = settings.gain;
                     if (settings.theme) {
                         document.body.setAttribute('data-theme', settings.theme);
                         updateThemeButtons(settings.theme);
                     }
                     return true;
                 }
-            } catch (e) {
-                console.warn('Не удалось загрузить настройки', e);
-            }
+            } catch (e) { console.warn('Ошибка загрузки', e); }
             return false;
         }
 
-        // Сохранение настроек
         function saveSettings() {
             try {
                 const settings = {
                     threshold: VOICE_THRESHOLD,
                     delay: DELAY_SECONDS,
+                    gain: PLAYBACK_GAIN,
                     theme: document.body.getAttribute('data-theme') || 'dark'
                 };
                 localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-            } catch (e) {
-                console.warn('Не удалось сохранить настройки', e);
-            }
+            } catch (e) { console.warn('Ошибка сохранения', e); }
         }
 
         // ===================== ПЕРЕМЕННЫЕ =====================
         let VOICE_THRESHOLD = 25;
         let DELAY_SECONDS = 3;
+        let PLAYBACK_GAIN = 200; // % громкости (100 = обычная)
         const SILENCE_TIMEOUT = 1.5;
         const MIN_RECORDING_SECONDS = 0.3;
 
@@ -554,6 +551,8 @@
         const currentLevel = document.getElementById('currentLevel');
         const delaySlider = document.getElementById('delaySlider');
         const delayValue = document.getElementById('delayValue');
+        const gainSlider = document.getElementById('gainSlider');
+        const gainValue = document.getElementById('gainValue');
         const presetBtns = document.querySelectorAll('.preset-btn');
         const startBtn = document.getElementById('startBtn');
         const themeBtns = document.querySelectorAll('.theme-btn');
@@ -569,6 +568,11 @@
             delayValue.textContent = DELAY_SECONDS;
         }
 
+        function updateGainDisplay() {
+            gainValue.textContent = PLAYBACK_GAIN + '%';
+            gainSlider.value = PLAYBACK_GAIN;
+        }
+
         function updateVolumeDisplay(volume) {
             currentVolume = Math.round(volume);
             currentLevel.textContent = currentVolume;
@@ -581,7 +585,7 @@
             }
         }
 
-        // ===== ВИЗУАЛИЗАТОР (ЭКВАЛАЙЗЕР) =====
+        // ===== ВИЗУАЛИЗАТОР =====
         let visualizerBars = [];
 
         function initVisualizer() {
@@ -598,15 +602,12 @@
 
         function updateVisualizer(volume) {
             const normalized = Math.min(1, volume / 255);
-            const height = 4 + normalized * 56;
             const count = visualizerBars.length;
-            // Создаем волну: центр громче, края тише
             for (let i = 0; i < count; i++) {
                 const distance = Math.abs(i - count / 2) / (count / 2);
                 const factor = Math.max(0, 1 - distance * 0.7);
                 const barHeight = 4 + normalized * factor * 56;
                 visualizerBars[i].style.height = barHeight + 'px';
-                // Цвет в зависимости от громкости
                 if (volume > VOICE_THRESHOLD) {
                     visualizerBars[i].style.background = `linear-gradient(180deg, var(--threshold-high), var(--threshold-mid))`;
                 } else {
@@ -858,14 +859,14 @@
             }
         }
 
-        // ===== ВОСПРОИЗВЕДЕНИЕ =====
+        // ===== ВОСПРОИЗВЕДЕНИЕ С УСИЛЕНИЕМ =====
         function playRecording() {
             if (isProcessing || isPlaying) return;
 
             isProcessing = true;
             isPlaying = true;
             updateUI('playing', `⏳ Через ${DELAY_SECONDS}с...`);
-            addLog(`⏳ Задержка ${DELAY_SECONDS}с`);
+            addLog(`⏳ Задержка ${DELAY_SECONDS}с (громкость ${PLAYBACK_GAIN}%)`);
 
             const chunksCopy = audioChunks.slice();
             audioChunks = [];
@@ -917,12 +918,18 @@
                         return audioContext.decodeAudioData(arrayBuffer);
                     })
                     .then(audioBuffer => {
+                        // === УСИЛЕНИЕ ГРОМКОСТИ ===
+                        const gainValue = PLAYBACK_GAIN / 100; // 2.0 для 200%
+                        const gainNode = audioContext.createGain();
+                        gainNode.gain.value = gainValue;
+
                         const source = audioContext.createBufferSource();
                         source.buffer = audioBuffer;
-                        source.connect(audioContext.destination);
+                        source.connect(gainNode);
+                        gainNode.connect(audioContext.destination);
 
-                        updateUI('playing', '🔊 Воспроизведение...');
-                        addLog('🔊 Воспроизведение');
+                        updateUI('playing', `🔊 Воспроизведение (${PLAYBACK_GAIN}%)...`);
+                        addLog(`🔊 Воспроизведение (усиление ${PLAYBACK_GAIN}%)`);
 
                         source.onended = () => {
                             addLog('✅ Воспроизведение завершено');
@@ -949,13 +956,13 @@
                     })
                     .catch(err => {
                         addLog('❌ Ошибка декодирования: ' + err.message);
-                        // Fallback на Audio
+                        // Fallback на Audio с увеличенной громкостью
                         try {
                             const blob2 = new Blob(chunks, { type: 'audio/mp4' });
                             const url2 = URL.createObjectURL(blob2);
                             const audio = new Audio();
                             audio.src = url2;
-                            audio.volume = 1.0;
+                            audio.volume = Math.min(1, PLAYBACK_GAIN / 100);
                             audio.onended = () => {
                                 URL.revokeObjectURL(url2);
                                 isPlaying = false;
@@ -1015,7 +1022,6 @@
             isProcessing = false;
             audioChunks = [];
 
-            // Сброс визуализатора
             visualizerBars.forEach(bar => bar.style.height = '4px');
 
             updateUI('idle', '⏹ Остановлено');
@@ -1025,9 +1031,17 @@
             addLog('⏹ Остановлено');
         }
 
-        // ===================== СОБЫТИЯ =====================
+        // ===== СОБЫТИЯ =====
 
         startBtn.addEventListener('click', startApp);
+
+        // Новый слайдер громкости воспроизведения
+        gainSlider.addEventListener('input', function() {
+            PLAYBACK_GAIN = parseInt(this.value);
+            updateGainDisplay();
+            saveSettings();
+            addLog(`🔊 Громкость воспроизведения: ${PLAYBACK_GAIN}%`);
+        });
 
         thresholdSlider.addEventListener('input', function() {
             VOICE_THRESHOLD = parseInt(this.value);
@@ -1048,12 +1062,20 @@
             btn.addEventListener('click', function() {
                 const threshold = parseInt(this.dataset.threshold);
                 const delay = parseFloat(this.dataset.delay);
+                const gain = parseInt(this.dataset.gain) || 200;
+                
                 VOICE_THRESHOLD = threshold;
                 DELAY_SECONDS = delay;
+                PLAYBACK_GAIN = gain;
+                
                 thresholdSlider.value = threshold;
                 delaySlider.value = delay;
+                gainSlider.value = gain;
+                
                 updateThresholdDisplay();
                 updateDelayDisplay();
+                updateGainDisplay();
+                
                 presetBtns.forEach(b => b.classList.remove('active'));
                 this.classList.add('active');
                 saveSettings();
@@ -1061,15 +1083,17 @@
             });
         });
 
-        // ===================== ЗАГРУЗКА СОХРАНЁННЫХ НАСТРОЕК =====================
+        // ===== ЗАГРУЗКА =====
         window.addEventListener('load', () => {
             addLog('🚀 Загружено');
             const hasSettings = loadSettings();
             if (hasSettings) {
                 thresholdSlider.value = VOICE_THRESHOLD;
                 delaySlider.value = DELAY_SECONDS;
+                gainSlider.value = PLAYBACK_GAIN;
                 updateThresholdDisplay();
                 updateDelayDisplay();
+                updateGainDisplay();
                 addLog('💾 Настройки загружены');
             }
             setTimeout(startApp, 1000);
