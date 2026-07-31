@@ -421,17 +421,17 @@
                 <span class="value" id="thresholdDisplay">Порог: 25</span>
             </div>
 
-            <!-- ГРОМКОСТЬ ВОСПРОИЗВЕДЕНИЯ (НОВЫЙ СЛАЙДЕР) -->
+            <!-- УСИЛЕНИЕ ЗВУКА (НОВЫЙ СЛАЙДЕР) -->
             <div class="slider-group">
                 <label>
-                    <span>🔊 Громкость воспроизведения</span>
-                    <span class="val" id="gainValue">200%</span>
+                    <span>🔊 Усиление звука</span>
+                    <span class="val" id="gainValue">10x</span>
                 </label>
-                <input type="range" id="gainSlider" min="50" max="400" value="200" step="5">
+                <input type="range" id="gainSlider" min="2" max="20" value="10" step="0.5">
                 <div class="slider-scale">
-                    <span>50%</span>
-                    <span>200%</span>
-                    <span>400%</span>
+                    <span>2x</span>
+                    <span>10x</span>
+                    <span>20x</span>
                 </div>
             </div>
 
@@ -462,11 +462,11 @@
             </div>
 
             <div class="presets">
-                <button class="preset-btn" data-threshold="60" data-delay="3" data-gain="200">🔇 Шумно</button>
-                <button class="preset-btn active" data-threshold="25" data-delay="3" data-gain="200">🎯 Средняя</button>
-                <button class="preset-btn" data-threshold="12" data-delay="3" data-gain="250">🗣️ Шёпот</button>
-                <button class="preset-btn" data-threshold="40" data-delay="5" data-gain="200">🎵 Музыка</button>
-                <button class="preset-btn" data-threshold="80" data-delay="3" data-gain="150">📢 Крик</button>
+                <button class="preset-btn" data-threshold="60" data-delay="3" data-gain="8">🔇 Шумно</button>
+                <button class="preset-btn active" data-threshold="25" data-delay="3" data-gain="10">🎯 Средняя</button>
+                <button class="preset-btn" data-threshold="12" data-delay="3" data-gain="15">🗣️ Шёпот</button>
+                <button class="preset-btn" data-threshold="40" data-delay="5" data-gain="10">🎵 Музыка</button>
+                <button class="preset-btn" data-threshold="80" data-delay="3" data-gain="5">📢 Крик</button>
             </div>
         </div>
 
@@ -516,7 +516,7 @@
         // ===================== ПЕРЕМЕННЫЕ =====================
         let VOICE_THRESHOLD = 25;
         let DELAY_SECONDS = 3;
-        let PLAYBACK_GAIN = 200; // % громкости (100 = обычная)
+        let PLAYBACK_GAIN = 10; // множитель громкости (10 = 10x)
         const SILENCE_TIMEOUT = 1.5;
         const MIN_RECORDING_SECONDS = 0.3;
 
@@ -569,7 +569,7 @@
         }
 
         function updateGainDisplay() {
-            gainValue.textContent = PLAYBACK_GAIN + '%';
+            gainValue.textContent = PLAYBACK_GAIN + 'x';
             gainSlider.value = PLAYBACK_GAIN;
         }
 
@@ -859,14 +859,14 @@
             }
         }
 
-        // ===== ВОСПРОИЗВЕДЕНИЕ С УСИЛЕНИЕМ =====
+        // ===== ВОСПРОИЗВЕДЕНИЕ С МАКСИМАЛЬНЫМ УСИЛЕНИЕМ =====
         function playRecording() {
             if (isProcessing || isPlaying) return;
 
             isProcessing = true;
             isPlaying = true;
             updateUI('playing', `⏳ Через ${DELAY_SECONDS}с...`);
-            addLog(`⏳ Задержка ${DELAY_SECONDS}с (громкость ${PLAYBACK_GAIN}%)`);
+            addLog(`⏳ Задержка ${DELAY_SECONDS}с (усиление ${PLAYBACK_GAIN}x)`);
 
             const chunksCopy = audioChunks.slice();
             audioChunks = [];
@@ -918,41 +918,95 @@
                         return audioContext.decodeAudioData(arrayBuffer);
                     })
                     .then(audioBuffer => {
-                        // === УСИЛЕНИЕ ГРОМКОСТИ ===
-                        const gainValue = PLAYBACK_GAIN / 100; // 2.0 для 200%
-                        const gainNode = audioContext.createGain();
-                        gainNode.gain.value = gainValue;
+                        // === МАКСИМАЛЬНОЕ УСИЛЕНИЕ ===
+                        // 1. Сначала нормализуем (находим пик и делаем громче)
+                        const audioData = audioBuffer.getChannelData(0);
+                        let maxVal = 0;
+                        for (let i = 0; i < audioData.length; i++) {
+                            const abs = Math.abs(audioData[i]);
+                            if (abs > maxVal) maxVal = abs;
+                        }
+                        
+                        // Нормализация: если тихо, поднимаем до 0.8
+                        let normalizationGain = 1;
+                        if (maxVal > 0.001) {
+                            normalizationGain = 0.8 / maxVal; // поднимаем до 80% от максимума
+                        }
+                        
+                        // Ограничиваем нормализацию, чтобы не было клиппинга
+                        if (normalizationGain > 1) {
+                            // Умножаем на пользовательский множитель
+                            const totalGain = normalizationGain * PLAYBACK_GAIN;
+                            // Применяем усиление через gain node
+                            const gainNode = audioContext.createGain();
+                            gainNode.gain.value = Math.min(totalGain, 4.0); // ограничиваем до 4x от нормализованного
+                            
+                            const source = audioContext.createBufferSource();
+                            source.buffer = audioBuffer;
+                            source.connect(gainNode);
+                            gainNode.connect(audioContext.destination);
+                            
+                            updateUI('playing', `🔊 Воспроизведение (${PLAYBACK_GAIN}x)...`);
+                            addLog(`🔊 Воспроизведение (усиление ${PLAYBACK_GAIN}x, нормализация ${Math.round(normalizationGain * 100)}%)`);
 
-                        const source = audioContext.createBufferSource();
-                        source.buffer = audioBuffer;
-                        source.connect(gainNode);
-                        gainNode.connect(audioContext.destination);
-
-                        updateUI('playing', `🔊 Воспроизведение (${PLAYBACK_GAIN}%)...`);
-                        addLog(`🔊 Воспроизведение (усиление ${PLAYBACK_GAIN}%)`);
-
-                        source.onended = () => {
-                            addLog('✅ Воспроизведение завершено');
-                            isPlaying = false;
-                            isProcessing = false;
-                            if (isRunning) {
-                                updateUI('listening', '🎤 Слушаю...');
-                                addLog('🎤 Снова слушаю');
-                            }
-                        };
-
-                        source.start(0);
-
-                        setTimeout(() => {
-                            if (isPlaying) {
-                                try { source.stop(); } catch (e) {}
+                            source.onended = () => {
+                                addLog('✅ Воспроизведение завершено');
                                 isPlaying = false;
                                 isProcessing = false;
                                 if (isRunning) {
                                     updateUI('listening', '🎤 Слушаю...');
+                                    addLog('🎤 Снова слушаю');
                                 }
-                            }
-                        }, (audioBuffer.duration * 1000) + 1000);
+                            };
+
+                            source.start(0);
+
+                            setTimeout(() => {
+                                if (isPlaying) {
+                                    try { source.stop(); } catch (e) {}
+                                    isPlaying = false;
+                                    isProcessing = false;
+                                    if (isRunning) {
+                                        updateUI('listening', '🎤 Слушаю...');
+                                    }
+                                }
+                            }, (audioBuffer.duration * 1000) + 1000);
+                        } else {
+                            // Если нормализация не нужна, просто усиливаем
+                            const gainNode = audioContext.createGain();
+                            gainNode.gain.value = Math.min(PLAYBACK_GAIN, 4.0);
+                            
+                            const source = audioContext.createBufferSource();
+                            source.buffer = audioBuffer;
+                            source.connect(gainNode);
+                            gainNode.connect(audioContext.destination);
+                            
+                            updateUI('playing', `🔊 Воспроизведение (${PLAYBACK_GAIN}x)...`);
+                            addLog(`🔊 Воспроизведение (усиление ${PLAYBACK_GAIN}x)`);
+
+                            source.onended = () => {
+                                addLog('✅ Воспроизведение завершено');
+                                isPlaying = false;
+                                isProcessing = false;
+                                if (isRunning) {
+                                    updateUI('listening', '🎤 Слушаю...');
+                                    addLog('🎤 Снова слушаю');
+                                }
+                            };
+
+                            source.start(0);
+
+                            setTimeout(() => {
+                                if (isPlaying) {
+                                    try { source.stop(); } catch (e) {}
+                                    isPlaying = false;
+                                    isProcessing = false;
+                                    if (isRunning) {
+                                        updateUI('listening', '🎤 Слушаю...');
+                                    }
+                                }
+                            }, (audioBuffer.duration * 1000) + 1000);
+                        }
                     })
                     .catch(err => {
                         addLog('❌ Ошибка декодирования: ' + err.message);
@@ -962,7 +1016,7 @@
                             const url2 = URL.createObjectURL(blob2);
                             const audio = new Audio();
                             audio.src = url2;
-                            audio.volume = Math.min(1, PLAYBACK_GAIN / 100);
+                            audio.volume = Math.min(1, PLAYBACK_GAIN / 2);
                             audio.onended = () => {
                                 URL.revokeObjectURL(url2);
                                 isPlaying = false;
@@ -1035,12 +1089,11 @@
 
         startBtn.addEventListener('click', startApp);
 
-        // Новый слайдер громкости воспроизведения
         gainSlider.addEventListener('input', function() {
-            PLAYBACK_GAIN = parseInt(this.value);
+            PLAYBACK_GAIN = parseFloat(this.value);
             updateGainDisplay();
             saveSettings();
-            addLog(`🔊 Громкость воспроизведения: ${PLAYBACK_GAIN}%`);
+            addLog(`🔊 Усиление: ${PLAYBACK_GAIN}x`);
         });
 
         thresholdSlider.addEventListener('input', function() {
@@ -1062,7 +1115,7 @@
             btn.addEventListener('click', function() {
                 const threshold = parseInt(this.dataset.threshold);
                 const delay = parseFloat(this.dataset.delay);
-                const gain = parseInt(this.dataset.gain) || 200;
+                const gain = parseFloat(this.dataset.gain) || 10;
                 
                 VOICE_THRESHOLD = threshold;
                 DELAY_SECONDS = delay;
